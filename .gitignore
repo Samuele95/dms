@@ -1,0 +1,25 @@
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# Scan output directories
+/tmp/
+scan_output_*/
+
+# Config with sensitive data
+.malscan.conf
+
+# Portable tools
+malscan_portable_tools/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

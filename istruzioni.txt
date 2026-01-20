@@ -1,0 +1,8 @@
+  Script Usage                                                                                                                                                        
+                                                                                                                                                                      
+  # Run deep scan on any drive                                                                                                                                        
+  ./malware_scan.sh /dev/sdX1 -d                                                                                                                                      
+                                                                                                                                                                      
+  # Full scan with all options                                                                                                                                        
+  ./malware_scan.sh /dev/sdX1 -m -u -d -o report.txt                                                                                                                  
+                                                     
