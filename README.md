@@ -24,7 +24,7 @@
   <a href="#-interactive-mode">Interactive Mode</a> •
   <a href="#-features">Features</a> •
   <a href="#-use-cases">Use Cases</a> •
-  <a href="#-technical-specifications">Specs</a>
+  <a href="WIKI.md">Wiki</a>
 </p>
 
 <p align="center">
