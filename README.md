@@ -21,10 +21,10 @@
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
+  <a href="#-interactive-mode">Interactive Mode</a> •
   <a href="#-features">Features</a> •
   <a href="#-use-cases">Use Cases</a> •
-  <a href="#-documentation">Docs</a> •
-  <a href="#-contributing">Contributing</a>
+  <a href="#-technical-specifications">Specs</a>
 </p>
 
 <p align="center">
@@ -51,48 +51,208 @@ Unlike traditional antivirus tools that only scan mounted filesystems, DMS opera
 - **Forensic disk images** (E01/EWF format)
 - **Encrypted or packed malware** through entropy analysis
 
-DMS combines **12+ scanning techniques** into a single, easy-to-use command-line tool with an optional interactive TUI, producing actionable reports that guide your investigation.
+DMS combines **12+ scanning techniques** into a single, easy-to-use tool with an **interactive TUI**, producing actionable reports that guide your investigation.
 
 ---
 
-## Why DMS?
+## Quick Start
 
-### The Problem
+### 1. Download DMS
 
-When investigating a potentially compromised system, forensic analysts face several challenges:
+```bash
+git clone https://github.com/Samuele95/dms.git && cd dms && chmod +x malware_scan.sh
+```
 
-| Challenge | Traditional Tools | DMS Solution |
-|-----------|-------------------|--------------|
-| Scanning disk images | Require mounting, may alter evidence | Native E01/EWF support with hash verification |
-| Finding deleted malware | Cannot access unallocated space | Slack space extraction and analysis |
-| Multiple scan tools | Run ClamAV, YARA, strings separately | All-in-one integrated scanning |
-| Correlating results | Manual cross-referencing | Unified reports with guidance |
-| Hidden/packed malware | Signature-only detection | Entropy analysis + behavioral patterns |
-| Time pressure | Sequential tool execution | Parallel scanning mode |
+### 2. Launch Interactive Mode (Recommended)
 
-### The Solution
+```bash
+sudo ./malware_scan.sh --interactive
+```
 
-DMS provides a **forensically-sound**, **comprehensive**, and **efficient** approach:
+That's it! The interactive TUI will guide you through everything. DMS can **automatically download all required tools** - no manual installation needed.
+
+---
+
+## Interactive Mode
+
+**Interactive mode is the recommended way to use DMS.** It provides a full-screen interface that makes scan configuration intuitive and error-free.
+
+### Launch
+
+```bash
+sudo ./malware_scan.sh --interactive
+# or
+sudo ./malware_scan.sh -i
+```
+
+### TUI Interface
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        ONE COMMAND                              │
-│                              │                                  │
-│            sudo ./malware_scan.sh evidence.E01 --deep           │
-│                              │                                  │
-│                              ▼                                  │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
-│  │ ClamAV  │ │  YARA   │ │ Entropy │ │ Carving │ │ Strings │   │
-│  │  Scan   │ │  Rules  │ │Analysis │ │ Files   │ │ Extract │   │
-│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘   │
-│       └───────────┴───────────┴───────────┴───────────┘         │
-│                              │                                  │
-│                              ▼                                  │
-│              ┌───────────────────────────────┐                  │
-│              │   UNIFIED FORENSIC REPORT     │                  │
-│              │   with Actionable Guidance    │                  │
-│              └───────────────────────────────┘                  │
-└─────────────────────────────────────────────────────────────────┘
+╔══════════════════════════════════════════════════════════════════════╗
+║               DMS - DRIVE MALWARE SCAN                               ║
+║        Use ↑↓ to navigate, Space/Enter to toggle, S to start         ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  INPUT SOURCE                                                        ║
+╟──────────────────────────────────────────────────────────────────────╢
+║▶ Path: /dev/sdb1 [block_device]                                      ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  SCAN TYPE                                                           ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  ( ) Quick Scan       Fast sample-based analysis                     ║
+║  (●) Standard Scan    ClamAV + YARA + Strings + Binwalk              ║
+║  ( ) Deep Scan        All scanners + entropy + carving               ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  SCAN SCOPE                                                          ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  (●) Full Drive       Scan entire device including all data          ║
+║  ( ) Slack Space      Scan only unallocated/deleted areas            ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  OPTIONS                                                             ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  [ ] Mount device before scanning                                    ║
+║  [✓] Update ClamAV databases                                         ║
+║  [✓] Parallel scanning mode                                          ║
+║  [ ] Auto-calculate chunk size                                       ║
+║  [ ] Verify EWF hash before scan (forensic integrity)                ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  ADDITIONAL FEATURES                                                 ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  [ ] VirusTotal hash lookup (requires API key)                       ║
+║  [ ] Rootkit detection (requires mount)                              ║
+║  [ ] Generate file timeline                                          ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  OUTPUT                                                              ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  [✓] Generate HTML report                                            ║
+║  [✓] Generate JSON report                                            ║
+║  [ ] Keep output directory after scan                                ║
+╠══════════════════════════════════════════════════════════════════════╣
+║      [S] Start Scan    [I] Set Input Path    [Q] Quit                ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  ✓  Ready to scan: /dev/sdb1 (block_device)
+```
+
+### Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate menu items |
+| `Space` / `Enter` | Toggle option or select |
+| `S` | Start scan with current settings |
+| `I` | Open input path dialog |
+| `Q` / `Esc` | Quit |
+| `1` / `2` / `3` | Quick select scan type |
+
+### TUI Features
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-detection** | Automatically identifies input type (block device, EWF, raw) |
+| **Input Validation** | Prevents starting scan without valid input path |
+| **Device Discovery** | Lists available block devices when setting input path |
+| **EWF Awareness** | Suggests enabling hash verification for forensic images |
+| **Real-time Feedback** | Status line shows current state and readiness |
+
+---
+
+## Installation
+
+### Portable Mode (Recommended - Zero Dependencies!)
+
+**DMS can download all required tools automatically.** This is the easiest way to get started:
+
+```bash
+# Clone DMS
+git clone https://github.com/Samuele95/dms.git && cd dms && chmod +x malware_scan.sh
+
+# Run with portable mode - tools are downloaded automatically!
+sudo ./malware_scan.sh --interactive --portable
+
+# Or via command line
+sudo ./malware_scan.sh /dev/sdb1 --portable
+```
+
+**What portable mode does:**
+- Downloads ClamAV, YARA, and other required tools
+- Stores them in `/tmp/malscan_portable_tools`
+- Works on any Linux system with internet access
+- Use `--portable-keep` to preserve tools for offline use later
+
+```bash
+# Keep tools after scan for reuse
+sudo ./malware_scan.sh /dev/sdb1 --portable --portable-keep
+
+# Subsequent scans reuse cached tools
+sudo ./malware_scan.sh /dev/sdc1 --portable
+```
+
+---
+
+### Manual Installation (Optional)
+
+If you prefer to install tools system-wide, or if you're on Tsurugi Linux (which has most tools pre-installed):
+
+<details>
+<summary><strong>Debian/Ubuntu/Tsurugi Linux</strong></summary>
+
+```bash
+# Core tools (required for basic scans)
+sudo apt update
+sudo apt install clamav clamav-daemon yara binutils binwalk
+
+# Deep scan tools (recommended for full forensic analysis)
+sudo apt install foremost bulk-extractor ssdeep libimage-exiftool-perl md5deep
+
+# Slack space analysis
+sudo apt install sleuthkit
+
+# EWF forensic image support
+sudo apt install libewf-tools
+
+# Rootkit detection (optional)
+sudo apt install chkrootkit rkhunter
+```
+
+</details>
+
+<details>
+<summary><strong>Fedora/RHEL/CentOS</strong></summary>
+
+```bash
+# Enable EPEL repository
+sudo dnf install epel-release
+
+# Core tools
+sudo dnf install clamav clamav-update yara binutils binwalk
+
+# Additional tools
+sudo dnf install foremost sleuthkit libewf-tools
+```
+
+</details>
+
+<details>
+<summary><strong>Arch Linux</strong></summary>
+
+```bash
+# Core tools
+sudo pacman -S clamav yara binutils binwalk
+
+# AUR packages
+yay -S foremost bulk-extractor sleuthkit libewf
+```
+
+</details>
+
+### System-wide Installation (Optional)
+
+```bash
+# Create symlink for global access
+sudo ln -s $(pwd)/malware_scan.sh /usr/local/bin/dms
+
+# Now you can run from anywhere
+sudo dms --interactive
 ```
 
 ---
@@ -108,7 +268,7 @@ DMS provides a **forensically-sound**, **comprehensive**, and **efficient** appr
 | Engine | Capability |
 |--------|------------|
 | **ClamAV** | 1M+ malware signatures |
-| **YARA** | Custom pattern rules |
+| **YARA** | Custom pattern rules (4 categories) |
 | **Binwalk** | Firmware/embedded files |
 | **Strings** | IOC extraction |
 | **Entropy** | Packed/encrypted detection |
@@ -136,6 +296,8 @@ DMS provides a **forensically-sound**, **comprehensive**, and **efficient** appr
 
 | | Feature | Description |
 |:---:|---------|-------------|
+| :desktop_computer: | **Interactive TUI** | User-friendly menu-driven interface - the recommended way to use DMS |
+| :package: | **Portable Mode** | Zero-install option - auto-downloads all required tools |
 | :microscope: | **Deep Analysis** | Entropy analysis, file carving, PE/ELF header detection, boot sector inspection |
 | :mag: | **Multi-Engine Scanning** | ClamAV signatures + YARA rules + Binwalk + Strings + Bulk Extractor |
 | :bar_chart: | **Smart Reporting** | Text, HTML, and JSON reports with prioritized actionable guidance |
@@ -143,9 +305,52 @@ DMS provides a **forensically-sound**, **comprehensive**, and **efficient** appr
 | :zap: | **Parallel Processing** | Multi-threaded scanning with automatic chunk optimization |
 | :floppy_disk: | **Slack Space Recovery** | Extract and analyze unallocated disk space for hidden threats |
 | :globe_with_meridians: | **VirusTotal Integration** | Automatic hash lookup via VT API for threat intelligence |
-| :package: | **Portable Mode** | Zero-install option - auto-downloads required tools |
-| :desktop_computer: | **Interactive TUI** | User-friendly menu-driven interface for scan configuration |
 | :arrows_counterclockwise: | **Checkpoint/Resume** | Resume interrupted scans without losing progress |
+
+---
+
+## Why DMS?
+
+### The Problem
+
+When investigating a potentially compromised system, forensic analysts face several challenges:
+
+| Challenge | Traditional Tools | DMS Solution |
+|-----------|-------------------|--------------|
+| Scanning disk images | Require mounting, may alter evidence | Native E01/EWF support with hash verification |
+| Finding deleted malware | Cannot access unallocated space | Slack space extraction and analysis |
+| Multiple scan tools | Run ClamAV, YARA, strings separately | All-in-one integrated scanning |
+| Correlating results | Manual cross-referencing | Unified reports with guidance |
+| Hidden/packed malware | Signature-only detection | Entropy analysis + behavioral patterns |
+| Time pressure | Sequential tool execution | Parallel scanning mode |
+| Tool installation | Complex dependency management | Portable mode downloads everything |
+
+### The Solution
+
+DMS provides a **forensically-sound**, **comprehensive**, and **efficient** approach:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     INTERACTIVE MODE                            │
+│                           or                                    │
+│                     ONE COMMAND                                 │
+│                          │                                      │
+│          sudo ./malware_scan.sh evidence.E01 --deep             │
+│                          │                                      │
+│                          ▼                                      │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │ ClamAV  │ │  YARA   │ │ Entropy │ │ Carving │ │ Strings │   │
+│  │  Scan   │ │  Rules  │ │Analysis │ │ Files   │ │ Extract │   │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘   │
+│       └───────────┴───────────┴───────────┴───────────┘         │
+│                          │                                      │
+│                          ▼                                      │
+│            ┌───────────────────────────────┐                    │
+│            │   UNIFIED FORENSIC REPORT     │                    │
+│            │   with Actionable Guidance    │                    │
+│            └───────────────────────────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -156,11 +361,14 @@ DMS provides a **forensically-sound**, **comprehensive**, and **efficient** appr
 **Scenario:** A user reports suspicious activity. You need to quickly assess if malware is present.
 
 ```bash
-# Quick triage scan
-sudo ./malware_scan.sh /dev/sda1 --quick
+# Launch interactive mode for guided scan
+sudo ./malware_scan.sh --interactive --portable
+
+# Or via command line for quick triage
+sudo ./malware_scan.sh /dev/sda1 --quick --portable
 
 # If threats found, perform deep analysis
-sudo ./malware_scan.sh /dev/sda1 --deep --parallel --html
+sudo ./malware_scan.sh /dev/sda1 --deep --parallel --html --portable
 ```
 
 **What DMS Does:**
@@ -175,7 +383,10 @@ sudo ./malware_scan.sh /dev/sda1 --deep --parallel --html
 **Scenario:** Law enforcement provides an E01 forensic image from a seized computer.
 
 ```bash
-# Verify evidence integrity and scan
+# Launch interactive mode - it auto-detects EWF and suggests hash verification
+sudo ./malware_scan.sh --interactive
+
+# Or via command line
 sudo ./malware_scan.sh evidence.E01 --verify-hash --deep --json
 
 # Focus on deleted/hidden data
@@ -230,15 +441,15 @@ sudo ./malware_scan.sh malware_disk.raw --deep --keep-output
 
 ---
 
-### 5. Field Operations: No Pre-installed Tools
+### 5. Field Operations: Portable Forensics
 
-**Scenario:** Responding to an incident with only a bootable USB.
+**Scenario:** Responding to an incident with only a bootable USB - no tools pre-installed.
 
 ```bash
 # Portable mode downloads and runs tools automatically
-sudo ./malware_scan.sh /dev/sdb1 --portable --portable-keep
+sudo ./malware_scan.sh --interactive --portable --portable-keep
 
-# Subsequent scans use cached tools
+# Subsequent scans use cached tools (even offline!)
 sudo ./malware_scan.sh /dev/sdc1 --portable
 ```
 
@@ -250,153 +461,9 @@ sudo ./malware_scan.sh /dev/sdc1 --portable
 
 ---
 
-## Quick Start
+## Command-Line Usage
 
-### One-Line Install
-
-```bash
-git clone https://github.com/Samuele95/dms.git && cd dms && chmod +x malware_scan.sh
-```
-
-### First Scan
-
-```bash
-# Basic scan of a partition
-sudo ./malware_scan.sh /dev/sdb1
-
-# Or use interactive mode
-sudo ./malware_scan.sh --interactive
-```
-
-### Expected Output
-
-```
-╔═══════════════════════════════════════════════════════════════╗
-║           ██████╗ ███╗   ███╗███████╗                         ║
-║           ██║  ██║██╔████╔██║███████╗                         ║
-║           ██████╔╝██║ ╚═╝ ██║███████║                         ║
-║                                                               ║
-║             D R I V E   M A L W A R E   S C A N               ║
-╠═══════════════════════════════════════════════════════════════╣
-║                  DMS v2.1  |  EWF Support                     ║
-╚═══════════════════════════════════════════════════════════════╝
-
-[*] Checking Required Tools
-[+] clamscan found
-[+] yara found
-[+] strings found
-[+] binwalk found
-
-═══════════════════════════════════════════════════════════════
- Device Information
-═══════════════════════════════════════════════════════════════
-[*] Validating input: /dev/sdb1
-[+] Block device detected
-[*] Device size: 128 GB
-[*] Filesystem: ntfs
-
-═══════════════════════════════════════════════════════════════
- ClamAV Scan
-═══════════════════════════════════════════════════════════════
-[*] Scanning with ClamAV...
-[+] Scan complete: 2 infected files found
-
-═══════════════════════════════════════════════════════════════
- YARA Scan
-═══════════════════════════════════════════════════════════════
-[*] Scanning with YARA rules...
-[+] Windows rules: 5 matches
-[+] Linux rules: 0 matches
-...
-```
-
----
-
-## Installation
-
-### Prerequisites
-
-<details>
-<summary><strong>Debian/Ubuntu (including Tsurugi Linux)</strong></summary>
-
-```bash
-# Core tools (required)
-sudo apt update
-sudo apt install clamav clamav-daemon yara binutils binwalk
-
-# Deep scan tools (recommended)
-sudo apt install foremost bulk-extractor ssdeep libimage-exiftool-perl md5deep
-
-# Slack space analysis
-sudo apt install sleuthkit
-
-# EWF forensic image support
-sudo apt install libewf-tools
-
-# Rootkit detection (optional)
-sudo apt install chkrootkit rkhunter
-```
-
-</details>
-
-<details>
-<summary><strong>Fedora/RHEL/CentOS</strong></summary>
-
-```bash
-# Enable EPEL repository
-sudo dnf install epel-release
-
-# Core tools
-sudo dnf install clamav clamav-update yara binutils binwalk
-
-# Additional tools
-sudo dnf install foremost sleuthkit libewf-tools
-```
-
-</details>
-
-<details>
-<summary><strong>Arch Linux</strong></summary>
-
-```bash
-# Core tools
-sudo pacman -S clamav yara binutils binwalk
-
-# AUR packages
-yay -S foremost bulk-extractor sleuthkit libewf
-```
-
-</details>
-
-### Install DMS
-
-```bash
-# Clone the repository
-git clone https://github.com/Samuele95/dms.git
-cd dms
-
-# Make executable
-chmod +x malware_scan.sh
-
-# (Optional) Install system-wide
-sudo ln -s $(pwd)/malware_scan.sh /usr/local/bin/dms
-
-# Verify installation
-./malware_scan.sh --help
-```
-
-### Portable Mode (Zero Dependencies)
-
-Don't have tools installed? No problem:
-
-```bash
-# DMS will download what it needs
-sudo ./malware_scan.sh /dev/sdb1 --portable
-```
-
----
-
-## Usage Examples
+While interactive mode is recommended, DMS also supports full command-line operation:
 
 ### Basic Operations
 
@@ -460,71 +527,44 @@ sudo ./malware_scan.sh /dev/sdb1 --output /cases/case001/report.txt --html
 sudo ./malware_scan.sh /dev/sdb1 --deep --keep-output
 ```
 
-### Advanced Options
-
-```bash
-# Resume interrupted scan
-sudo ./malware_scan.sh /dev/sdb1 --resume /tmp/malware_scan_12345/.checkpoint
-
-# Dry run (preview what would be done)
-sudo ./malware_scan.sh /dev/sdb1 --deep --dry-run
-
-# Custom configuration file
-sudo ./malware_scan.sh /dev/sdb1 --config /etc/dms/custom.conf
-
-# Verbose logging to file
-sudo ./malware_scan.sh /dev/sdb1 --verbose --log-file /var/log/dms-scan.log
-```
-
 ---
 
 ## Scan Modes Explained
 
-| Mode | Command | Speed | Coverage | Use Case |
+| Mode | Command | Speed | Coverage | Best For |
 |------|---------|-------|----------|----------|
-| **Standard** | `./malware_scan.sh /dev/sdb1` | Medium | Allocated data | General malware detection |
-| **Quick** | `--quick` | Fast | Sampled regions | Rapid triage, preliminary assessment |
+| **Quick** | `--quick` | Fast | Sampled regions | Rapid triage, "is this worth investigating?" |
+| **Standard** | (default) | Medium | Allocated data | General malware detection |
 | **Deep** | `--deep` | Slow | Everything | Full forensic analysis |
 | **Slack** | `--slack` | Medium | Unallocated only | Deleted file recovery, hidden threats |
 | **Parallel** | `--parallel` | Faster | Same as mode | Multi-core acceleration |
 
-### Mode Details
-
-<details>
-<summary><strong>Standard Scan</strong></summary>
-
-The default mode runs:
-- ClamAV signature scan
-- YARA rule matching (Windows, Linux, Android, Documents)
-- Binwalk embedded file detection
-- Strings analysis for IOCs
-
-```bash
-sudo ./malware_scan.sh /dev/sdb1
-```
-
-</details>
+### What Each Mode Includes
 
 <details>
 <summary><strong>Quick Scan</strong></summary>
 
-Sample-based analysis for rapid triage:
 - Strategic sampling of disk regions
 - Entropy checks on samples
 - Identifies areas needing deeper investigation
-- Ideal for "is this worth investigating?" decisions
+- Ideal for rapid triage
 
-```bash
-sudo ./malware_scan.sh /dev/sdb1 --quick
-```
+</details>
+
+<details>
+<summary><strong>Standard Scan (Default)</strong></summary>
+
+- ClamAV signature scan
+- YARA rule matching (Windows, Linux, Android, Documents)
+- Binwalk embedded file detection
+- Strings analysis for IOCs
 
 </details>
 
 <details>
 <summary><strong>Deep Scan</strong></summary>
 
-Comprehensive forensic analysis includes:
-- All standard scans PLUS:
+All standard scans PLUS:
 - Entropy analysis (detect encrypted/packed data)
 - File carving (recover deleted files)
 - Executable header detection (PE/ELF)
@@ -532,212 +572,140 @@ Comprehensive forensic analysis includes:
 - Bulk extraction (emails, URLs, credit cards)
 - Hash generation for all carved files
 
-```bash
-sudo ./malware_scan.sh /dev/sdb1 --deep
-```
-
 </details>
 
 <details>
 <summary><strong>Slack Space Scan</strong></summary>
 
-Focuses on unallocated disk space:
 - Extracts unallocated space using `blkls` (Sleuth Kit)
 - Carves recoverable files from slack
 - Scans all recovered data for threats
 - Finds malware that was "deleted" but not overwritten
 
-```bash
-sudo ./malware_scan.sh /dev/sdb1 --slack
-```
-
 </details>
 
 ---
 
-## Detection Capabilities
+## Technical Specifications
 
-### Multi-Engine Architecture
+### Architecture Overview
 
 ```
-                    ┌─────────────────────────────────────┐
-                    │           INPUT LAYER               │
-                    │  Block Device / EWF / Raw Image     │
-                    └──────────────────┬──────────────────┘
-                                       │
-        ┌──────────────────────────────┼──────────────────────────────┐
-        │                              │                              │
-        ▼                              ▼                              ▼
-┌───────────────┐            ┌───────────────┐            ┌───────────────┐
-│   SIGNATURE   │            │    PATTERN    │            │   HEURISTIC   │
-│   DETECTION   │            │   MATCHING    │            │   ANALYSIS    │
-├───────────────┤            ├───────────────┤            ├───────────────┤
-│ • ClamAV      │            │ • YARA Rules  │            │ • Entropy     │
-│   (1M+ sigs)  │            │   - Windows   │            │ • PE Headers  │
-│ • VirusTotal  │            │   - Linux     │            │ • ELF Headers │
-│   (70+ AVs)   │            │   - Android   │            │ • Boot Sector │
-│               │            │   - Documents │            │ • Binwalk     │
-└───────────────┘            └───────────────┘            └───────────────┘
-        │                              │                              │
-        └──────────────────────────────┼──────────────────────────────┘
-                                       │
-                                       ▼
-                    ┌─────────────────────────────────────┐
-                    │         ARTIFACT EXTRACTION         │
-                    ├─────────────────────────────────────┤
-                    │ • Strings (URLs, IPs, paths)        │
-                    │ • Bulk Extractor (emails, CCNs)     │
-                    │ • File Carving (deleted files)      │
-                    │ • Slack Space Recovery              │
-                    └─────────────────────────────────────┘
-                                       │
-                                       ▼
-                    ┌─────────────────────────────────────┐
-                    │          UNIFIED REPORT             │
-                    │   Text / HTML / JSON + Guidance     │
-                    └─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         DMS v2.1                                │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   Input     │  │   Config    │  │   CLI / Interactive     │ │
+│  │  Handler    │  │   Loader    │  │        Parser           │ │
+│  └──────┬──────┘  └──────┬──────┘  └───────────┬─────────────┘ │
+│         └────────────────┴─────────────────────┘               │
+│                          │                                      │
+│  ┌───────────────────────▼───────────────────────────────────┐ │
+│  │                   Scan Orchestrator                        │ │
+│  │  (Sequential / Parallel Mode with Checkpoint Support)      │ │
+│  └───────────────────────┬───────────────────────────────────┘ │
+│                          │                                      │
+│  ┌───────────────────────▼───────────────────────────────────┐ │
+│  │                   Scanning Modules (12+)                   │ │
+│  │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │ │
+│  │ │ ClamAV  │ │  YARA   │ │ Binwalk │ │ Strings │           │ │
+│  │ └─────────┘ └─────────┘ └─────────┘ └─────────┘           │ │
+│  │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │ │
+│  │ │ Entropy │ │ Carving │ │  Bulk   │ │ Hashes  │           │ │
+│  │ │Analysis │ │ Engine  │ │Extractor│ │ Gen     │           │ │
+│  │ └─────────┘ └─────────┘ └─────────┘ └─────────┘           │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                          │                                      │
+│  ┌───────────────────────▼───────────────────────────────────┐ │
+│  │                  Report Generator                          │ │
+│  │       (Text / HTML / JSON with Actionable Guidance)        │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### YARA Rule Categories
+### Key Metrics
 
-| Category | Target | Examples |
-|----------|--------|----------|
-| **Windows** | PE malware | Ransomware, trojans, RATs, droppers |
-| **Linux** | ELF threats | Rootkits, backdoors, miners, botnets |
-| **Android** | APK malware | Adware, spyware, banking trojans |
-| **Documents** | Office/PDF | Macro malware, exploits, phishing docs |
+| Metric | Value |
+|--------|-------|
+| Script Size | ~4,850 lines of Bash |
+| Scanning Engines | 12+ integrated techniques |
+| Configuration Parameters | 30+ tunable options |
+| YARA Rule Categories | 4 (Windows, Linux, Android, Documents) |
 
-### What Each Engine Detects
+### Supported Input Formats
 
-| Engine | Detection Type | Strengths |
-|--------|---------------|-----------|
-| **ClamAV** | Known malware signatures | Fast, 1M+ signatures, daily updates |
-| **YARA** | Behavioral patterns | Custom rules, family detection, packed samples |
-| **Entropy** | Encrypted/packed data | Finds hidden payloads, crypto artifacts |
-| **Binwalk** | Embedded files | Firmware analysis, nested archives |
-| **Strings** | IOC extraction | C2 URLs, file paths, credentials |
-| **Bulk Extractor** | Forensic artifacts | Email addresses, credit cards, URLs |
+| Type | Extensions | Auto-Detected |
+|------|------------|---------------|
+| Block Device | `/dev/sdX`, `/dev/nvmeXnY` | Yes |
+| EWF Image | `.E01`, `.E02`, `.Ex01`, `.L01`, `.Lx01` | Yes |
+| Raw Image | `.raw`, `.dd`, `.img`, `.bin` | Yes |
+
+### Report Formats
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| **Text** | Plain ASCII with formatting | Terminal viewing, logs |
+| **HTML** | Styled web page | Sharing with stakeholders |
+| **JSON** | Machine-readable | SIEM integration, scripting |
+
+### Detection Engine Details
+
+| Engine | Signatures/Rules | Parallel Support |
+|--------|------------------|------------------|
+| ClamAV | 1M+ signatures | Yes |
+| YARA (Windows) | Qu1cksc0pe rules | Yes |
+| YARA (Linux) | Qu1cksc0pe rules | Yes |
+| YARA (Android) | Qu1cksc0pe rules | Yes |
+| YARA (Documents) | oledump rules | Yes |
+| Entropy Analysis | Threshold: 7.5/8.0 | No |
+| File Carving | foremost/scalpel | No |
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success - scan completed |
+| `1` | Error - scan failed or invalid arguments |
+| `130` | Interrupted - SIGINT (Ctrl+C) |
+| `143` | Terminated - SIGTERM |
 
 ---
 
-## Report Formats
+## CLI Options Reference
 
-### Text Report
-
-Human-readable ASCII report with scan summary and findings.
-
-```
-═══════════════════════════════════════════════════════════════
-              TSURUGI LINUX MALWARE SCAN REPORT
-              Generated: Mon Jan 20 15:30:00 UTC 2026
-═══════════════════════════════════════════════════════════════
-
-DEVICE INFORMATION
-──────────────────
-Device:     /dev/sdb1
-Size:       128 GB
-Filesystem: ntfs
-Scan Type:  DEEP SCAN
-Parallel:   YES
-
-SCAN RESULTS
-────────────
-Basic Scans:
-  ClamAV:              2 infected
-  YARA Windows:        5 matches
-  YARA Linux:          0 matches
-  YARA Android:        0 matches
-  YARA Documents:      1 matches
-  Binwalk:             12 findings
-  String Analysis:     47 patterns
-
-Deep Scan Results:
-  Entropy Analysis:    SUSPICIOUS (3 high-entropy regions)
-  Carved Files:        156 recovered
-  Carved Malware:      3 infected
-  PE Executables:      24 found
-  Boot Sector:         Normal
-
-RECOMMENDED ACTIONS
-───────────────────
-1. CLAMAV (Critical priority)
-   Reason: 2 known malware signature(s) detected
-   Action: Isolate and analyze infected files immediately
-   Files:  $OUTPUT_DIR/clamav_results/
-
-2. YARA (High priority)
-   Reason: 6 rule(s) matched specific threat patterns
-   Action: Extract and analyze data at matched offsets
-   Files:  $OUTPUT_DIR/yara_matches/
-
-OVERALL STATUS
-──────────────
-STATUS: SUSPICIOUS
-Total findings: 68
-Manual review recommended.
-
-═══════════════════════════════════════════════════════════════
-Scan output directory: /tmp/malware_scan_12345
-```
-
-### HTML Report
-
-Professional web-based report with styling, perfect for sharing with stakeholders.
-
-```bash
-sudo ./malware_scan.sh /dev/sdb1 --html
-# Opens: /tmp/malware_scan_12345/scan_report_20260120_153000.html
-```
-
-### JSON Report
-
-Machine-readable format for integration with SIEMs, case management, or scripts.
-
-```json
-{
-    "report": {
-        "version": "2.1",
-        "generated": "2026-01-20T15:30:00+00:00",
-        "tool": "DMS - Drive Malware Scanner"
-    },
-    "device": {
-        "path": "/dev/sdb1",
-        "size_gb": 128,
-        "filesystem": "ntfs"
-    },
-    "scan_config": {
-        "mode": "full",
-        "type": "deep",
-        "parallel": true
-    },
-    "results": {
-        "clamav": 2,
-        "yara_windows": 5,
-        "yara_linux": 0,
-        "entropy": 1,
-        "carved_files": 156,
-        "carved_malware": 3
-    },
-    "summary": {
-        "total_findings": 68,
-        "status": "suspicious"
-    }
-}
-```
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--interactive` | `-i` | **Launch interactive TUI (recommended)** |
+| `--portable` | | **Auto-download missing tools** |
+| `--portable-keep` | | Keep portable tools after scan |
+| `--mount` | `-m` | Mount device before scanning |
+| `--update` | `-u` | Update ClamAV databases first |
+| `--deep` | `-d` | Enable deep forensic scan |
+| `--parallel` | `-p` | Enable parallel scanning |
+| `--quick` | | Fast sample-based scan |
+| `--slack` | | Scan unallocated space only |
+| `--html` | | Generate HTML report |
+| `--json` | | Generate JSON report |
+| `--quiet` | `-q` | Minimal output |
+| `--verbose` | `-v` | Debug output |
+| `--verify-hash` | | Verify EWF image integrity |
+| `--virustotal` | | Enable VT hash lookup |
+| `--rootkit` | | Run rootkit detection |
+| `--timeline` | | Generate file timeline |
+| `--keep-output` | | Preserve temp files |
+| `--resume FILE` | | Resume from checkpoint |
+| `--config FILE` | | Custom config file |
+| `--log-file FILE` | | Write logs to file |
+| `--output FILE` | `-o` | Custom output path |
+| `--dry-run` | | Preview without executing |
 
 ---
 
 ## Configuration
 
-### Configuration File
-
 Create `~/.malscan.conf`, `/etc/malscan.conf`, or `./malscan.conf`:
 
 ```bash
-# ============================================
-# DMS Configuration File
-# ============================================
-
 # Performance Settings
 CHUNK_SIZE=500              # MB per chunk (larger = more RAM, faster)
 MAX_PARALLEL_JOBS=4         # Parallel scan threads (match CPU cores)
@@ -762,59 +730,6 @@ MAX_CARVED_FILES=1000       # Limit recovered files
 
 # Logging
 LOG_LEVEL=INFO              # DEBUG, INFO, WARNING, ERROR
-
-# Display
-NO_COLOR=false
-HIGH_CONTRAST=false
-```
-
-### CLI Options Reference
-
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--mount` | `-m` | Mount device before scanning |
-| `--update` | `-u` | Update ClamAV databases first |
-| `--deep` | `-d` | Enable deep forensic scan |
-| `--parallel` | `-p` | Enable parallel scanning |
-| `--quick` | | Fast sample-based scan |
-| `--slack` | | Scan unallocated space only |
-| `--html` | | Generate HTML report |
-| `--json` | | Generate JSON report |
-| `--quiet` | `-q` | Minimal output |
-| `--verbose` | `-v` | Debug output |
-| `--interactive` | `-i` | Interactive TUI mode |
-| `--verify-hash` | | Verify EWF image integrity |
-| `--virustotal` | | Enable VT hash lookup |
-| `--rootkit` | | Run rootkit detection |
-| `--timeline` | | Generate file timeline |
-| `--portable` | | Auto-download missing tools |
-| `--portable-keep` | | Keep portable tools after scan |
-| `--keep-output` | | Preserve temp files |
-| `--resume FILE` | | Resume from checkpoint |
-| `--config FILE` | | Custom config file |
-| `--log-file FILE` | | Write logs to file |
-| `--output FILE` | `-o` | Custom output path |
-| `--dry-run` | | Preview without executing |
-
----
-
-## Supported Formats
-
-### Input Types
-
-| Type | Extensions | Auto-Detected | Notes |
-|------|------------|---------------|-------|
-| Block Device | `/dev/sdX`, `/dev/nvmeXnY` | Yes | Physical drives and partitions |
-| EWF Image | `.E01`, `.E02`, `.Ex01`, `.L01` | Yes | Expert Witness Format (forensic standard) |
-| Raw Image | `.raw`, `.dd`, `.img`, `.bin` | Yes | Raw disk dumps |
-
-### Force Input Format
-
-```bash
-# If auto-detection fails, force the format
-sudo ./malware_scan.sh mystery_file --input-format ewf
-sudo ./malware_scan.sh mystery_file --input-format raw
-sudo ./malware_scan.sh mystery_file --input-format block
 ```
 
 ---
@@ -824,7 +739,7 @@ sudo ./malware_scan.sh mystery_file --input-format block
 <details>
 <summary><strong>Does DMS modify the evidence/disk?</strong></summary>
 
-**No.** DMS operates in read-only mode. It reads raw disk data without writing anything to the source device or image. EWF images are mounted read-only using FUSE. This preserves forensic integrity.
+**No.** DMS operates in read-only mode. It reads raw disk data without writing anything to the source device or image. EWF images are mounted read-only using FUSE.
 
 </details>
 
@@ -834,28 +749,17 @@ sudo ./malware_scan.sh mystery_file --input-format block
 Yes, but with caveats:
 - Use `--mount` to enable filesystem-level analysis
 - Rootkit detection (`--rootkit`) works best on mounted systems
-- For best results, boot from a forensic live USB (like Tsurugi Linux) and scan the offline disk
+- For best results, boot from a forensic live USB and scan the offline disk
 
 </details>
 
 <details>
-<summary><strong>How long does a scan take?</strong></summary>
+<summary><strong>What if I don't have tools installed?</strong></summary>
 
-It depends on disk size and scan mode:
-- **Quick scan**: Minutes (samples only)
-- **Standard scan**: ~10-30 min per 100GB
-- **Deep scan**: ~30-60 min per 100GB
-- **Parallel mode**: 2-4x faster on multi-core systems
-
-</details>
-
-<details>
-<summary><strong>What if I don't have all the tools installed?</strong></summary>
-
-Use `--portable` mode! DMS will automatically download and use portable versions of ClamAV, YARA, and other tools.
+Use `--portable` mode! DMS will automatically download and use portable versions of all required tools:
 
 ```bash
-sudo ./malware_scan.sh /dev/sdb1 --portable
+sudo ./malware_scan.sh --interactive --portable
 ```
 
 </details>
@@ -863,13 +767,13 @@ sudo ./malware_scan.sh /dev/sdb1 --portable
 <details>
 <summary><strong>Can I use custom YARA rules?</strong></summary>
 
-Yes! Set `YARA_RULES_BASE` in your config file to point to your rules directory:
+Yes! Set `YARA_RULES_BASE` in your config file:
 
 ```bash
 YARA_RULES_BASE=/path/to/my/yara-rules
 ```
 
-Rules should be organized in subdirectories: `Windows/`, `Linux/`, `Android/`, etc.
+Rules should be in subdirectories: `Windows/`, `Linux/`, `Android/`
 
 </details>
 
@@ -878,31 +782,15 @@ Rules should be organized in subdirectories: `Windows/`, `Linux/`, `Android/`, e
 
 1. Get a free API key from [VirusTotal](https://www.virustotal.com/gui/join-us)
 2. Add to config: `VT_API_KEY=your_key_here`
-3. Run with `--virustotal` flag
-
-```bash
-sudo ./malware_scan.sh /dev/sdb1 --virustotal
-```
+3. Enable in interactive mode or use `--virustotal` flag
 
 </details>
-
----
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [SPEC.md](SPEC.md) | Complete technical specification |
-| [malscan.conf](malscan.conf) | Example configuration file |
-| `--help` | Built-in command reference |
 
 ---
 
 ## Contributing
 
 Contributions are welcome! Here's how to help:
-
-### Development Setup
 
 ```bash
 # Fork and clone
@@ -923,69 +811,33 @@ git push origin feature/amazing-feature
 # Open Pull Request
 ```
 
-### Code Style
-
-- Use consistent 4-space indentation
-- Add comments for complex logic
-- Follow existing function naming conventions
-- Test on Tsurugi Linux when possible
-- Update documentation for new features
-
 ### Areas for Contribution
 
 - [ ] Additional YARA rule sets
 - [ ] New detection engines
 - [ ] Performance optimizations
 - [ ] Documentation improvements
-- [ ] Bug fixes and error handling
-- [ ] Unit tests
+- [ ] Bug fixes
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License**.
-
-```
-MIT License
-
-Copyright (c) 2026 DMS Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
 ## Acknowledgments
 
-DMS is built on the shoulders of giants:
-
 | Project | Role in DMS |
 |---------|-------------|
 | [Tsurugi Linux](https://tsurugi-linux.org/) | Target forensic distribution |
-| [ClamAV](https://www.clamav.net/) | Signature-based detection engine |
+| [ClamAV](https://www.clamav.net/) | Signature-based detection |
 | [YARA](https://virustotal.github.io/yara/) | Pattern matching engine |
 | [Qu1cksc0pe](https://github.com/CYB3RMX/Qu1cksc0pe) | YARA rules collection |
-| [The Sleuth Kit](https://sleuthkit.org/) | Forensic tools (blkls, fls, mactime) |
+| [The Sleuth Kit](https://sleuthkit.org/) | Forensic tools |
 | [Binwalk](https://github.com/ReFirmLabs/binwalk) | Firmware analysis |
 | [Bulk Extractor](https://github.com/simsong/bulk_extractor) | Artifact extraction |
-| [Foremost](http://foremost.sourceforge.net/) | File carving |
 
 ---
 
