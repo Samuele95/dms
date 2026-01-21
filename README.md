@@ -121,6 +121,15 @@ sudo ./malware_scan.sh -i
 ║  [ ] Rootkit detection (requires mount)                              ║
 ║  [ ] Generate file timeline                                          ║
 ╟──────────────────────────────────────────────────────────────────────╢
+║  FORENSIC ANALYSIS (Windows artifacts)                               ║
+╟──────────────────────────────────────────────────────────────────────╢
+║  [ ] Full forensic analysis (enables all below)                      ║
+║  [ ] Persistence artifacts (registry, tasks, services)               ║
+║  [ ] Execution artifacts (prefetch, amcache, shimcache)              ║
+║  [ ] File anomalies (timestomping, ADS, suspicious paths)            ║
+║  [ ] RE triage (capa, imports, entropy)                              ║
+║  [ ] MFT/filesystem forensics (deleted files, USN journal)           ║
+╟──────────────────────────────────────────────────────────────────────╢
 ║  OUTPUT                                                              ║
 ╟──────────────────────────────────────────────────────────────────────╢
 ║  [✓] Generate HTML report                                            ║
@@ -306,6 +315,28 @@ sudo dms --interactive
 | :floppy_disk: | **Slack Space Recovery** | Extract and analyze unallocated disk space for hidden threats |
 | :globe_with_meridians: | **VirusTotal Integration** | Automatic hash lookup via VT API for threat intelligence |
 | :arrows_counterclockwise: | **Checkpoint/Resume** | Resume interrupted scans without losing progress |
+| :mag_right: | **Forensic Analysis** | Persistence, execution artifacts, RE triage, MFT analysis |
+
+### Behavioral & Forensic Analysis (NEW)
+
+DMS now includes comprehensive **behavioral and forensic analysis** for Windows artifacts:
+
+| Module | Artifacts Analyzed | MITRE ATT&CK |
+|--------|-------------------|--------------|
+| **Persistence Scan** | Registry Run keys, Services, Scheduled Tasks, Startup folders, WMI subscriptions | T1547, T1543, T1053, T1546 |
+| **Execution Scan** | Prefetch, Amcache, Shimcache, UserAssist, SRUM, BAM/DAM | T1059, T1204 |
+| **File Anomalies** | Magic/extension mismatch, ADS, timestomping, suspicious paths, packed executables | T1036, T1070, T1564 |
+| **RE Triage** | capa analysis, suspicious imports (process injection/hollowing), similarity hashes, shellcode detection | T1055, T1055.012 |
+| **MFT Forensics** | Deleted file recovery, $MFT parsing, $UsnJrnl analysis, timestamp anomalies | T1070, T1485 |
+
+```bash
+# Enable all forensic modules
+sudo ./malware_scan.sh evidence.E01 --forensic-analysis
+
+# Or enable specific modules
+sudo ./malware_scan.sh /dev/sdb1 --persistence-scan --execution-scan
+sudo ./malware_scan.sh evidence.E01 --re-triage --mft-analysis
+```
 
 ---
 
@@ -698,6 +729,12 @@ All standard scans PLUS:
 | `--log-file FILE` | | Write logs to file |
 | `--output FILE` | `-o` | Custom output path |
 | `--dry-run` | | Preview without executing |
+| `--forensic-analysis` | | **Enable all forensic modules** |
+| `--persistence-scan` | | Scan for persistence mechanisms |
+| `--execution-scan` | | Analyze execution artifacts |
+| `--file-anomalies` | | Detect file anomalies/timestomping |
+| `--re-triage` | | RE triage on suspicious files |
+| `--mft-analysis` | | MFT/filesystem forensics |
 
 ---
 
