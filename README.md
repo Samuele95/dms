@@ -38,6 +38,11 @@
   <img src="https://img.shields.io/badge/YARA-powered-yellow.svg?style=flat-square" alt="YARA">
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/🔥_NEW-Bootable_ISO-ff6b6b?style=for-the-badge" alt="Bootable ISO">
+  <img src="https://img.shields.io/badge/🔥_NEW-USB_Kit_Mode-ff6b6b?style=for-the-badge" alt="USB Kit Mode">
+</p>
+
 ---
 
 ## What is DMS?
@@ -53,6 +58,28 @@ Unlike traditional antivirus tools that only scan mounted filesystems, DMS opera
 - **Encrypted or packed malware** through entropy analysis
 
 DMS combines **12+ scanning techniques** into a single, easy-to-use tool with an **interactive TUI**, producing actionable reports that guide your investigation.
+
+> ### 🔥 **NEW: Bootable Forensic ISO & USB Kit**
+>
+> DMS can now be deployed as a **complete bootable forensic system**:
+>
+> | Deployment | Description | Size |
+> |------------|-------------|------|
+> | **🖥️ Bootable ISO** | Debian Live-based forensic OS with DMS pre-installed | ~2.5 GB |
+> | **💾 Full USB Kit** | Complete offline kit - runs on any Linux | ~1.2 GB |
+> | **📦 Minimal Kit** | Script only, downloads tools on-demand | ~10 MB |
+>
+> **Perfect for field operations** - boot from USB at crime scenes with zero network dependency!
+>
+> ```bash
+> # Build bootable ISO
+> sudo ./malware_scan.sh --build-iso --iso-output ~/dms-forensic.iso
+>
+> # Or build USB kit
+> sudo ./malware_scan.sh --build-full-kit --kit-target /media/usb
+> ```
+>
+> 👉 **[Jump to USB Kit & Bootable ISO section](#-usb-kit--bootable-iso)**
 
 ---
 
@@ -527,11 +554,20 @@ dms-scan /dev/sda1 --deep --forensic-analysis --output-device /dev/sdc1
 
 ---
 
-## USB Kit & Bootable ISO
+## 🔥 USB Kit & Bootable ISO
 
-DMS can be deployed as a **portable USB forensic kit** or a **bootable live ISO** for field operations.
+<p align="center">
+  <strong>Deploy DMS as a complete, self-contained forensic system</strong><br>
+  <em>Perfect for field operations, crime scenes, and air-gapped environments</em>
+</p>
 
-### USB Kit Modes
+> **Why Bootable ISO?**
+> - 🔒 **Forensically Sound** - Read-only squashfs prevents evidence contamination
+> - 🌐 **Zero Network Dependency** - All tools and signatures bundled
+> - ⚡ **Instant Deployment** - Boot and scan in minutes
+> - 📋 **Chain of Custody** - Auto-generates evidence documentation
+
+### 💾 USB Kit Modes
 
 | Mode | Size | Use Case |
 |------|------|----------|
@@ -570,9 +606,9 @@ sudo /media/usb/run-dms.sh /dev/sda1 --deep --forensic-analysis
 sudo /media/usb/dms/malware_scan.sh --update-kit
 ```
 
-### Bootable ISO
+### 🖥️ Bootable Forensic ISO
 
-Create a Debian Live-based bootable forensic ISO:
+Create a **Debian Live-based bootable forensic ISO** - a complete forensic operating system on a USB stick:
 
 ```bash
 # Build the ISO (requires root, ~10 min)
@@ -608,9 +644,43 @@ sudo apt install grub-efi-amd64-bin mtools dosfstools
 | **DMS Pre-configured** | Full kit with bundled tools |
 | **Persistence Option** | Optional partition for case data |
 
-### Output Storage Management
+#### Bootable ISO Workflow
 
-When running from live ISO, DMS safely manages output storage:
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    DMS BOOTABLE ISO WORKFLOW                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   PREPARATION (Office)              FIELD (Crime Scene)             │
+│   ════════════════════              ═══════════════════             │
+│                                                                     │
+│   ┌─────────────────┐               ┌─────────────────┐             │
+│   │  Build ISO      │               │  Boot from USB  │             │
+│   │  --build-iso    │  ──────────►  │  Select "DMS    │             │
+│   └─────────────────┘               │  Forensic Live" │             │
+│          │                          └────────┬────────┘             │
+│          ▼                                   │                      │
+│   ┌─────────────────┐                        ▼                      │
+│   │  Flash to USB   │               ┌─────────────────┐             │
+│   │  dd if=.iso     │               │  Scan Evidence  │             │
+│   │  of=/dev/sdX    │               │  dms-scan       │             │
+│   └─────────────────┘               │  /dev/sda1      │             │
+│          │                          └────────┬────────┘             │
+│          ▼                                   │                      │
+│   ┌─────────────────┐                        ▼                      │
+│   │  (Optional)     │               ┌─────────────────┐             │
+│   │  Add Persistence│               │  Results saved  │             │
+│   │  Partition      │               │  to external    │             │
+│   └─────────────────┘               │  USB drive      │             │
+│                                     └─────────────────┘             │
+│                                                                     │
+│   Evidence NEVER touched • Chain of custody preserved               │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 📁 Output Storage Management
+
+When running from live ISO, DMS **safely manages output storage** - ensuring evidence drives are never written to:
 
 ```bash
 # Save results to external USB
