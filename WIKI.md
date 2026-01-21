@@ -18,7 +18,10 @@
 10. [Security & Forensic Integrity](#10-security--forensic-integrity)
 11. [Dependencies](#11-dependencies)
 12. [Troubleshooting](#12-troubleshooting)
-13. [Forensic Analysis Modules](#13-forensic-analysis-modules) **(NEW)**
+13. [Forensic Analysis Modules](#13-forensic-analysis-modules)
+14. [USB Kit Mode](#14-usb-kit-mode) **(NEW)**
+15. [ISO Builder](#15-iso-builder) **(NEW)**
+16. [Output Storage Management](#16-output-storage-management) **(NEW)**
 
 ---
 
@@ -1482,6 +1485,722 @@ Forensic findings appear in both HTML and JSON reports:
 | `mft_records_parsed` | MFT records analyzed |
 | `mft_deleted_recovered` | Deleted files found |
 | `usn_entries_parsed` | USN journal entries |
+
+---
+
+## 14. USB Kit Mode
+
+### 14.1 Overview
+
+DMS supports portable USB deployment for field forensics with two operational modes:
+
+| Mode | Size | Network Required | Use Case |
+|------|------|------------------|----------|
+| **Minimal** | ~10 MB | Yes (downloads tools on-demand) | Light deployment, good connectivity |
+| **Full Offline** | ~1.2 GB | No (all tools bundled) | Air-gapped environments, field work |
+
+### 14.2 USB Kit Structure
+
+```
+USB_ROOT/
+├── dms/
+│   ├── malware_scan.sh           # Main script
+│   ├── malscan.conf              # Configuration
+│   ├── lib/                      # Library modules
+│   │   ├── usb_mode.sh           # USB detection & switching
+│   │   ├── update_manager.sh     # Database/tools updates
+│   │   ├── kit_builder.sh        # Build full offline kit
+│   │   ├── iso_builder.sh        # ISO creation functions
+│   │   └── output_storage.sh     # Output management
+│   ├── tools/                    # Bundled portable tools (full mode)
+│   │   ├── bin/                  # Executables
+│   │   └── lib/                  # Libraries
+│   ├── databases/                # Malware signatures (full mode)
+│   │   ├── clamav/               # ClamAV databases
+│   │   └── yara/                 # YARA rule sets
+│   ├── cache/                    # Compiled YARA rules
+│   ├── output/                   # Scan results
+│   └── logs/                     # Operation logs
+├── .dms_kit_manifest.json        # Kit metadata & versions
+└── run-dms.sh                    # Portable launcher script
+```
+
+### 14.3 Kit Manifest
+
+The `.dms_kit_manifest.json` file tracks kit metadata:
+
+```json
+{
+  "kit_version": "1.0.0",
+  "created_date": "2026-01-21T00:00:00Z",
+  "last_updated": "2026-01-21T00:00:00Z",
+  "mode": "full",
+  "dms_version": "2.1",
+  "databases": {
+    "clamav": {
+      "version": "27500",
+      "date": "2026-01-21",
+      "files": ["main.cvd", "daily.cvd", "bytecode.cvd"]
+    },
+    "yara": {
+      "qu1cksc0pe_date": "2026-01-21",
+      "signature_base_date": "2026-01-21"
+    }
+  },
+  "tools": {
+    "clamav": "1.3.1",
+    "yara": "4.5.0"
+  },
+  "checksums": {
+    "clamav_main": "abc123...",
+    "yara_rules": "def456..."
+  }
+}
+```
+
+### 14.4 Building a USB Kit
+
+#### Full Offline Kit (Recommended for Field Work)
+
+```bash
+# Build complete offline kit on a USB drive
+sudo ./malware_scan.sh --build-full-kit --kit-target /media/usb
+
+# Build with specific output location
+sudo ./malware_scan.sh --build-full-kit --kit-target /media/FORENSIC_USB
+```
+
+**Requirements**:
+- ~2 GB free space on target
+- Network connectivity (to download tools/databases)
+- Root privileges
+
+**Build Process**:
+1. Creates directory structure
+2. Downloads ClamAV binaries and databases
+3. Downloads YARA binary and rule sets
+4. Compiles YARA rules cache
+5. Copies DMS scripts and libraries
+6. Creates launcher script
+7. Generates manifest file
+
+#### Minimal Kit (Network Required)
+
+```bash
+# Build minimal kit (just scripts, downloads tools on-demand)
+sudo ./malware_scan.sh --build-minimal-kit --kit-target /media/usb
+```
+
+**Minimal Kit Contents**:
+- DMS scripts (~5 MB)
+- Configuration files
+- Library modules
+- Launcher script
+
+### 14.5 Running from USB Kit
+
+#### Using the Launcher Script
+
+```bash
+# Run from USB kit with auto-detection
+sudo /media/usb/run-dms.sh /dev/sda1
+
+# Run with options
+sudo /media/usb/run-dms.sh /dev/sda1 --deep --forensic-analysis
+
+# Interactive mode from USB
+sudo /media/usb/run-dms.sh --interactive
+```
+
+#### Direct Execution
+
+```bash
+# Navigate to DMS directory
+cd /media/usb/dms
+
+# Run with USB mode auto-detection
+sudo ./malware_scan.sh /dev/sda1
+
+# Force USB mode
+sudo ./malware_scan.sh /dev/sda1 --usb-mode
+```
+
+### 14.6 Updating a USB Kit
+
+```bash
+# Update databases on USB kit (requires network)
+sudo /media/usb/dms/malware_scan.sh --update-kit
+
+# Or from the USB root
+sudo /media/usb/run-dms.sh --update-kit
+```
+
+**Update Process**:
+1. Verifies USB is writable
+2. Checks network connectivity
+3. Downloads latest ClamAV databases (freshclam)
+4. Downloads latest YARA rules
+5. Recompiles YARA cache
+6. Updates manifest with new versions/timestamps
+
+### 14.7 USB Mode Detection
+
+DMS automatically detects USB kit mode by checking for `.dms_kit_manifest.json` in parent directories:
+
+```bash
+# Detection hierarchy (searches upward)
+1. ./..dms_kit_manifest.json
+2. ../..dms_kit_manifest.json
+3. ../../.dms_kit_manifest.json
+(continues up to root)
+```
+
+**Environment Variables Set in USB Mode**:
+
+| Variable | Description |
+|----------|-------------|
+| `USB_MODE` | `true` when running from USB kit |
+| `USB_ROOT` | Root directory of USB kit |
+| `KIT_MODE` | `minimal` or `full` |
+| `KIT_MANIFEST` | Path to manifest file |
+| `DMS_TOOLS_DIR` | Bundled tools directory |
+| `DMS_DATABASES_DIR` | Bundled databases directory |
+
+### 14.8 Configuration Options
+
+Add to `malscan.conf`:
+
+```bash
+# ============================================
+# USB Kit Settings
+# ============================================
+
+# Auto-detect USB kit mode
+USB_MODE=auto
+
+# Kit mode: "auto", "minimal", or "full"
+KIT_MODE=auto
+
+# USB kit directories (relative to USB_ROOT)
+USB_TOOLS_DIR=tools
+USB_DATABASES_DIR=databases
+USB_CACHE_DIR=cache
+
+# Update settings
+USB_UPDATE_CLAMAV=true
+USB_UPDATE_YARA=true
+USB_UPDATE_TOOLS=false
+
+# Minimum free space for full kit (MB)
+KIT_MIN_FREE_SPACE_MB=2000
+```
+
+### 14.9 Estimated Kit Sizes
+
+| Component | Size |
+|-----------|------|
+| DMS Scripts + Libraries | ~5 MB |
+| ClamAV Binaries | ~150 MB |
+| ClamAV Databases | ~350 MB |
+| YARA Binary + Rules | ~105 MB |
+| Other Tools (full mode) | ~500 MB |
+| **Minimal Kit Total** | **~10 MB** |
+| **Full Kit Total** | **~1.2 GB** |
+
+---
+
+## 15. ISO Builder
+
+### 15.1 Overview
+
+DMS can create bootable ISO images based on Debian Live for field forensics. The ISO approach offers advantages over direct USB deployment:
+
+| Aspect | ISO Approach | Direct USB |
+|--------|--------------|------------|
+| **Reusability** | Flash to unlimited USBs | Single USB only |
+| **Distribution** | Share ISO file with team | N/A |
+| **Integrity** | SHA256 checksum verification | None |
+| **Testing** | Test in VM first | Physical USB required |
+| **Versioning** | dms-forensic-v1.0.iso | Harder to track |
+| **Industry Standard** | Used by CAINE, Tsurugi, SIFT | Non-standard |
+
+### 15.2 ISO Structure
+
+```
+dms-forensic-X.Y.Z.iso
+├── boot/
+│   ├── grub/
+│   │   └── grub.cfg              # GRUB bootloader config (UEFI)
+│   └── efi.img                   # EFI boot image
+├── live/
+│   ├── filesystem.squashfs       # Compressed root filesystem
+│   ├── vmlinuz                   # Linux kernel
+│   └── initrd.img                # Initial ramdisk
+├── dms/                          # DMS kit embedded in ISO
+│   ├── malware_scan.sh
+│   ├── tools/                    # Bundled portable tools
+│   └── databases/                # Malware signatures
+├── isolinux/                     # Legacy BIOS boot
+│   ├── isolinux.bin
+│   └── isolinux.cfg
+└── .disk/
+    └── info                      # ISO metadata
+```
+
+### 15.3 Live System Features
+
+| Feature | Description |
+|---------|-------------|
+| **Base System** | Debian 12 (Bookworm) minimal |
+| **Forensic Tools** | sleuthkit, ewf-tools, dc3dd, exiftool |
+| **DMS Integration** | Pre-configured with bundled tools |
+| **Boot Modes** | UEFI + Legacy BIOS (hybrid ISO) |
+| **Read-Only Root** | squashfs prevents evidence contamination |
+| **Persistence** | Optional partition (user creates after flashing) |
+| **Auto-Mount** | Disabled by default (forensic safety) |
+
+### 15.4 Building an ISO
+
+#### Basic ISO Build
+
+```bash
+# Build bootable ISO with all defaults
+sudo ./malware_scan.sh --build-iso
+
+# Output: ./dms-forensic-2.1.0.iso
+# Output: ./dms-forensic-2.1.0.iso.sha256
+```
+
+#### Custom ISO Build
+
+```bash
+# Specify output location
+sudo ./malware_scan.sh --build-iso --iso-output ~/forensic-kit/dms-custom.iso
+
+# Include latest databases
+sudo ./malware_scan.sh --build-iso --iso-include-databases
+```
+
+**Build Requirements**:
+- Root privileges
+- ~5 GB free disk space (for build working directory)
+- Network connectivity (to download Debian Live base)
+- Tools: xorriso, squashfs-tools, debootstrap
+
+**Build Process**:
+1. Download official Debian Live ISO (or use cached)
+2. Verify ISO checksum
+3. Extract squashfs filesystem
+4. Install forensic tools (sleuthkit, ewf-tools, etc.)
+5. Inject DMS with full kit
+6. Create desktop integration
+7. Re-squash filesystem
+8. Build hybrid ISO (UEFI + BIOS bootable)
+9. Generate SHA256 checksum
+
+### 15.5 Flashing ISO to USB
+
+#### Using DMS Flash Command
+
+```bash
+# Flash ISO to USB device
+sudo ./malware_scan.sh --flash-iso /dev/sdb
+
+# Force flash (skip removable device check)
+sudo ./malware_scan.sh --flash-iso /dev/sdb --force
+```
+
+#### Using Standard Tools
+
+```bash
+# Using dd
+sudo dd if=dms-forensic-2.1.0.iso of=/dev/sdb bs=4M status=progress
+
+# Using Rufus (Windows)
+# Using Etcher (Cross-platform)
+```
+
+### 15.6 Adding Persistence Partition
+
+After flashing the ISO, you can create a persistence partition for saving case files and database updates:
+
+```bash
+# Create persistence partition on remaining USB space
+sudo ./malware_scan.sh --create-persistence /dev/sdb
+```
+
+**Persistence Partition**:
+- Label: `persistence`
+- Filesystem: ext4
+- Contains: `/home`, `/cases`, `/dms-updates`
+- Data survives reboots
+
+### 15.7 Boot Menu Options
+
+```
+╔════════════════════════════════════════════════════════════╗
+║            DMS Forensic Live                                ║
+╠════════════════════════════════════════════════════════════╣
+║  > DMS Forensic Live                                        ║
+║    DMS Forensic Live (Persistence)                          ║
+║    DMS Forensic Live (RAM Mode - toram)                     ║
+║    DMS Forensic Live (Safe - no automount)                  ║
+╚════════════════════════════════════════════════════════════╝
+```
+
+| Boot Option | Description |
+|-------------|-------------|
+| **DMS Forensic Live** | Standard boot, evidence drives not auto-mounted |
+| **Persistence** | Same + saves changes to persistence partition |
+| **RAM Mode** | Loads entire system to RAM (remove USB after boot) |
+| **Safe Mode** | No automount, no fstab - maximum forensic safety |
+
+### 15.8 ISO Configuration
+
+Add to `malscan.conf`:
+
+```bash
+# ============================================
+# ISO Builder Settings
+# ============================================
+
+# Base Debian Live ISO URL
+DEBIAN_LIVE_URL=https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-12.5.0-amd64-standard.iso
+
+# Expected SHA256 (for verification)
+DEBIAN_LIVE_SHA256=
+
+# ISO output filename pattern
+ISO_OUTPUT_PATTERN=dms-forensic-VERSION.iso
+
+# Additional packages to install
+ISO_EXTRA_PACKAGES="sleuthkit ewf-tools dc3dd exiftool testdisk"
+
+# Build working directory
+ISO_WORK_DIR=/tmp/dms-iso-build
+
+# Include databases in ISO
+ISO_INCLUDE_CLAMAV_DB=true
+ISO_INCLUDE_YARA_RULES=true
+```
+
+### 15.9 Estimated ISO Size
+
+| Component | Size |
+|-----------|------|
+| Debian Live base | ~1.0 GB |
+| Forensic tools | ~400 MB |
+| DMS + Tools | ~800 MB |
+| Databases | ~450 MB |
+| **Total ISO** | **~2.5-3.0 GB** |
+
+### 15.10 ISO Workflow Example
+
+```bash
+# 1. BUILD (one-time, on workstation with network)
+sudo ./malware_scan.sh --build-iso
+# Output: dms-forensic-2.1.0.iso (2.8 GB)
+# Output: dms-forensic-2.1.0.iso.sha256
+
+# 2. VERIFY (check integrity)
+sha256sum -c dms-forensic-2.1.0.iso.sha256
+
+# 3. DISTRIBUTE
+# - Share ISO file with team via secure channel
+# - Upload to internal forensic toolkit server
+
+# 4. FLASH (per USB stick needed)
+sudo dd if=dms-forensic-2.1.0.iso of=/dev/sdb bs=4M status=progress
+
+# 5. ADD PERSISTENCE (optional)
+sudo ./malware_scan.sh --create-persistence /dev/sdb
+
+# 6. BOOT & USE (at crime scene)
+# - Insert USB, boot from it
+# - Select "DMS Forensic Live" from menu
+# - Run: dms-scan /dev/sda1 --deep --forensic-analysis
+# - Results saved to external storage or persistence
+
+# 7. UPDATE (periodic maintenance)
+# Option A: Rebuild ISO with latest databases
+# Option B: On booted system with network:
+#           dms-scan --update-kit
+#           (saves to persistence partition)
+```
+
+---
+
+## 16. Output Storage Management
+
+### 16.1 Overview
+
+When running from a live ISO or USB kit, DMS needs a safe location to save scan results. The output storage module manages:
+
+- Detection of available writable storage
+- Safe output device mounting (excluding evidence drives)
+- Case directory structure creation
+- Evidence information documentation
+
+### 16.2 Storage Options
+
+| Option | Pros | Cons | Use Case |
+|--------|------|------|----------|
+| **External USB** | Portable, removable | Must format/trust device | Field work |
+| **Persistence Partition** | Always available | Limited space, on boot USB | Quick scans |
+| **Network Share** | Centralized, large | Requires network | Lab environment |
+| **PC Data Partition** | Large, fast | Risk of touching evidence | Careful use only |
+| **RAM (tmpfs)** | Zero disk writes | Lost on reboot | Evidence preview |
+
+### 16.3 Output Device Selection
+
+#### Automatic Detection
+
+DMS automatically detects available writable storage, excluding:
+- Evidence device (and all its partitions)
+- Boot device (live USB/ISO source)
+- System mount points (/, /boot, /usr)
+
+```bash
+# Run scan - DMS prompts for output storage if multiple options
+sudo ./malware_scan.sh /dev/sda1
+
+# Available Output Storage:
+# ==========================
+#   1. 💾 /dev/sdc1 (32G) - FORENSIC_OUTPUT [removable]
+#   2. 🔌 /dev/sdd1 (64G) - EXTERNAL_USB [removable]
+#   3. 💿 /dev/nvme0n1p4 (200G) - Data [internal]
+#   4. RAM only (tmpfs) - ⚠️ Data lost on reboot
+```
+
+#### CLI Options
+
+```bash
+# Specify output device
+sudo ./malware_scan.sh /dev/sda1 --output-device /dev/sdc1
+
+# Specify output path (directory)
+sudo ./malware_scan.sh /dev/sda1 --output-path /mnt/forensic-output
+
+# Use RAM only (tmpfs) - WARNING: lost on reboot
+sudo ./malware_scan.sh /dev/sda1 --output-tmpfs
+
+# Custom case name
+sudo ./malware_scan.sh /dev/sda1 --case-name "Investigation-2026-001"
+```
+
+### 16.4 Case Directory Structure
+
+When a scan starts, DMS creates a case directory:
+
+```
+/mnt/dms-output/
+└── cases/
+    └── case_20260121_143022/          # Auto-generated timestamp
+        ├── evidence_info.txt          # Source device, hashes, timestamps
+        ├── scan_config.json           # Scan settings used
+        ├── report.txt                 # Main text report
+        ├── report.html                # HTML report
+        ├── report.json                # JSON report
+        ├── findings/
+        │   ├── malware_detections/    # Detected malware samples
+        │   ├── suspicious_files/      # Flagged files
+        │   └── carved_files/          # Recovered files
+        ├── forensic_artifacts/
+        │   ├── persistence/           # Persistence findings
+        │   ├── execution/             # Execution artifacts
+        │   └── timeline/              # Timeline data
+        └── logs/
+            ├── scan.log               # Detailed scan log
+            └── tool_output/           # Raw tool outputs
+```
+
+### 16.5 Evidence Information File
+
+DMS automatically creates `evidence_info.txt` documenting the evidence source:
+
+```
+═══════════════════════════════════════════════════════════════════
+DMS FORENSIC SCAN - EVIDENCE INFORMATION
+═══════════════════════════════════════════════════════════════════
+
+Case Created:     2026-01-21 14:30:22 UTC
+Examiner System:  DMS Forensic Live 2.1.0
+DMS Version:      2.1.0
+
+EVIDENCE SOURCE
+───────────────
+Device:           /dev/sda1
+Type:             Block device (partition)
+Filesystem:       NTFS
+Size:             500 GB
+Serial:           WD-WMC4N0123456
+
+INTEGRITY HASHES (pre-scan)
+───────────────────────────
+MD5:              d41d8cd98f00b204e9800998ecf8427e
+SHA1:             da39a3ee5e6b4b0d3255bfef95601890afd80709
+SHA256:           e3b0c44298fc1c149afbf4c8996fb92427ae41e4...
+
+MOUNT STATUS
+────────────
+Mounted:          Read-only at /mnt/evidence
+Mount Options:    ro,noexec,noatime
+
+OUTPUT STORAGE
+──────────────
+Device:           /dev/sdc1 (External USB)
+Label:            FORENSIC_OUTPUT
+Mounted:          Read-write at /mnt/dms-output
+═══════════════════════════════════════════════════════════════════
+```
+
+### 16.6 Device Classification
+
+DMS classifies detected storage devices:
+
+| Type | Icon | Description | Priority |
+|------|------|-------------|----------|
+| **persistence** | 💾 | USB persistence partition | High |
+| **removable** | 🔌 | External USB, SD card | High |
+| **internal** | 💿 | Internal HDD/SSD partition | Low |
+
+### 16.7 tmpfs (RAM) Output
+
+When using `--output-tmpfs`, scan results are stored in RAM:
+
+```bash
+sudo ./malware_scan.sh /dev/sda1 --output-tmpfs
+```
+
+**Warnings**:
+- Data is LOST when system shuts down or reboots
+- Limited by available RAM
+- Useful for quick evidence preview without persistent storage
+
+**On Exit Warning**:
+```
+════════════════════════════════════════════════════════════
+⚠️  WARNING: Output was stored in RAM (tmpfs)
+⚠️  Data will be LOST when the system shuts down!
+⚠️  Copy important files to persistent storage before shutdown.
+════════════════════════════════════════════════════════════
+Case directory: /mnt/dms-output/cases/case_20260121_143022
+```
+
+### 16.8 Configuration Options
+
+Add to `malscan.conf`:
+
+```bash
+# ============================================
+# Output Storage Settings
+# ============================================
+
+# Default output device (blank = auto-detect)
+# OUTPUT_DEVICE=/dev/sdc1
+
+# Default output path
+# OUTPUT_PATH=/mnt/forensic-output
+
+# Use tmpfs by default
+OUTPUT_TMPFS=false
+
+# Default mount point
+OUTPUT_MOUNT_POINT=/mnt/dms-output
+
+# Case naming pattern
+CASE_NAME_PATTERN=case_%Y%m%d_%H%M%S
+
+# Warn before using tmpfs
+OUTPUT_TMPFS_WARN=true
+
+# ============================================
+# Persistence Partition Settings
+# ============================================
+
+# Default persistence label
+PERSISTENCE_LABEL=persistence
+
+# Minimum persistence size (MB)
+PERSISTENCE_MIN_SIZE_MB=512
+
+# Persistence filesystem
+PERSISTENCE_FSTYPE=ext4
+```
+
+### 16.9 Field Workflow Example
+
+```bash
+# 1. Boot from DMS Live USB at crime scene
+
+# 2. Plug in external evidence storage USB (NOT the evidence!)
+
+# 3. Launch DMS with output device specified
+sudo dms-scan /dev/sda1 --output-device /dev/sdc1 --deep
+
+# DMS will:
+# - Mount /dev/sda1 read-only (evidence)
+# - Mount /dev/sdc1 read-write (output)
+# - Create case directory on /dev/sdc1
+# - Hash evidence before scanning
+# - Run scan, save all results
+# - Display case path on completion
+
+# 4. Review results in case directory
+ls /mnt/dms-output/cases/case_*/
+
+# 5. Eject output USB, take to lab
+sudo umount /mnt/dms-output
+
+# 6. Evidence drive remains untouched
+```
+
+### 16.10 Storage Summary Display
+
+During scan initialization, DMS displays storage summary:
+
+```
+Output Storage Summary
+======================
+Type:        device
+Device:      /dev/sdc1
+Mount Point: /mnt/dms-output
+Mounted:     true
+Case Dir:    /mnt/dms-output/cases/case_20260121_143022
+```
+
+---
+
+## Appendix D: USB/ISO CLI Reference
+
+### USB Kit Commands
+
+| Option | Description |
+|--------|-------------|
+| `--build-full-kit` | Build complete offline USB kit |
+| `--build-minimal-kit` | Build minimal USB kit (scripts only) |
+| `--kit-target <path>` | Target directory for kit build |
+| `--update-kit` | Update USB kit databases |
+| `--usb-mode` | Force USB mode detection |
+
+### ISO Commands
+
+| Option | Description |
+|--------|-------------|
+| `--build-iso` | Build bootable ISO |
+| `--iso-output <path>` | Specify ISO output path |
+| `--flash-iso <device>` | Flash ISO to USB device |
+| `--create-persistence <device>` | Add persistence partition |
+| `--force` | Force flash without removable device check |
+
+### Output Storage Commands
+
+| Option | Description |
+|--------|-------------|
+| `--output-device <device>` | Use specific device for output |
+| `--output-path <path>` | Use specific directory for output |
+| `--output-tmpfs` | Use RAM only (tmpfs) |
+| `--case-name <name>` | Custom case directory name |
 
 ---
 
