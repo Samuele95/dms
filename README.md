@@ -24,6 +24,7 @@
   <a href="#-interactive-mode">Interactive Mode</a> •
   <a href="#-features">Features</a> •
   <a href="#-use-cases">Use Cases</a> •
+  <a href="#-usb-kit--bootable-iso">USB Kit & ISO</a> •
   <a href="WIKI.md">Wiki</a>
 </p>
 
@@ -307,6 +308,8 @@ sudo dms --interactive
 |:---:|---------|-------------|
 | :desktop_computer: | **Interactive TUI** | User-friendly menu-driven interface - the recommended way to use DMS |
 | :package: | **Portable Mode** | Zero-install option - auto-downloads all required tools |
+| :usb: | **USB Kit Mode** | Deploy as portable USB forensic kit (minimal ~10MB or full ~1.2GB) |
+| :cd: | **Bootable ISO** | Create Debian Live-based forensic ISO for field operations |
 | :microscope: | **Deep Analysis** | Entropy analysis, file carving, PE/ELF header detection, boot sector inspection |
 | :mag: | **Multi-Engine Scanning** | ClamAV signatures + YARA rules + Binwalk + Strings + Bulk Extractor |
 | :bar_chart: | **Smart Reporting** | Text, HTML, and JSON reports with prioritized actionable guidance |
@@ -316,6 +319,7 @@ sudo dms --interactive
 | :globe_with_meridians: | **VirusTotal Integration** | Automatic hash lookup via VT API for threat intelligence |
 | :arrows_counterclockwise: | **Checkpoint/Resume** | Resume interrupted scans without losing progress |
 | :mag_right: | **Forensic Analysis** | Persistence, execution artifacts, RE triage, MFT analysis |
+| :file_folder: | **Output Management** | Safe evidence-preserving output to external storage |
 
 ### Behavioral & Forensic Analysis (NEW)
 
@@ -489,6 +493,150 @@ sudo ./malware_scan.sh /dev/sdc1 --portable
 - Stores tools in `/tmp/malscan_portable_tools` for reuse
 - Works on any Linux system with internet access
 - `--portable-keep` preserves tools for offline use later
+
+---
+
+### 6. Offline Field Operations: USB Kit & Bootable ISO
+
+**Scenario:** Crime scene with no network - need fully self-contained forensic toolkit.
+
+**Preparation (at office with network):**
+```bash
+# Option A: Build USB Kit (~1.2 GB, runs on any Linux)
+sudo ./malware_scan.sh --build-full-kit --kit-target /media/usb
+
+# Option B: Build Bootable ISO (~2.5 GB, dedicated forensic system)
+sudo ./malware_scan.sh --build-iso --iso-output ~/dms-forensic.iso
+sudo dd if=~/dms-forensic.iso of=/dev/sdb bs=4M status=progress
+```
+
+**Field Usage (completely offline):**
+```bash
+# From USB Kit (boot any Linux)
+sudo /media/usb/run-dms.sh /dev/sda1 --deep --output-device /dev/sdc1
+
+# From Bootable ISO - boot, then run:
+dms-scan /dev/sda1 --deep --forensic-analysis --output-device /dev/sdc1
+```
+
+**What DMS Does:**
+- USB Kit: All tools and databases bundled, runs on any Linux
+- Bootable ISO: Dedicated Debian Live with forensic tools pre-installed
+- Evidence drive mounted read-only, results saved to external USB
+- Generates case directory with evidence_info.txt for chain-of-custody
+
+---
+
+## USB Kit & Bootable ISO
+
+DMS can be deployed as a **portable USB forensic kit** or a **bootable live ISO** for field operations.
+
+### USB Kit Modes
+
+| Mode | Size | Use Case |
+|------|------|----------|
+| **Minimal** | ~10 MB | Script only, downloads tools on-demand |
+| **Full Offline** | ~1.2 GB | Complete self-contained kit with all tools/databases |
+
+#### Build a Full Offline Kit
+
+```bash
+# Build complete offline kit on USB drive
+sudo ./malware_scan.sh --build-full-kit --kit-target /media/usb
+
+# What gets created:
+# /media/usb/
+# ├── dms/malware_scan.sh
+# ├── tools/bin/         (ClamAV, YARA, etc.)
+# ├── databases/         (Signatures, rules)
+# ├── .dms_kit_manifest.json
+# └── run-dms.sh         (Launcher script)
+```
+
+#### Build a Minimal Kit
+
+```bash
+# Minimal kit - downloads tools when needed
+sudo ./malware_scan.sh --build-minimal-kit --kit-target /media/usb
+```
+
+#### Run from USB Kit
+
+```bash
+# Full offline mode - just works, no network needed
+sudo /media/usb/run-dms.sh /dev/sda1 --deep --forensic-analysis
+
+# Update kit databases when network available
+sudo /media/usb/dms/malware_scan.sh --update-kit
+```
+
+### Bootable ISO
+
+Create a Debian Live-based bootable forensic ISO:
+
+```bash
+# Build the ISO (requires root, ~10 min)
+sudo ./malware_scan.sh --build-iso
+
+# Custom output path
+sudo ./malware_scan.sh --build-iso --iso-output ~/dms-forensic-1.0.iso
+
+# Flash ISO to USB drive
+sudo ./malware_scan.sh --flash-iso /dev/sdb --iso ~/dms-forensic-1.0.iso
+
+# Add persistence partition for saving case data
+sudo ./malware_scan.sh --create-persistence /dev/sdb
+```
+
+#### ISO Build Requirements
+
+```bash
+# Install required packages
+sudo apt install xorriso squashfs-tools debootstrap wget coreutils
+
+# For UEFI support (recommended)
+sudo apt install grub-efi-amd64-bin mtools dosfstools
+```
+
+#### ISO Features
+
+| Feature | Description |
+|---------|-------------|
+| **Hybrid Boot** | UEFI + Legacy BIOS compatible |
+| **Read-Only Root** | Squashfs prevents evidence contamination |
+| **Forensic Tools** | sleuthkit, ewf-tools, dc3dd pre-installed |
+| **DMS Pre-configured** | Full kit with bundled tools |
+| **Persistence Option** | Optional partition for case data |
+
+### Output Storage Management
+
+When running from live ISO, DMS safely manages output storage:
+
+```bash
+# Save results to external USB
+sudo ./malware_scan.sh /dev/sda1 --output-device /dev/sdc1
+
+# Save to specific path
+sudo ./malware_scan.sh /dev/sda1 --output-path /mnt/forensic-output
+
+# RAM only (WARNING: lost on reboot)
+sudo ./malware_scan.sh /dev/sda1 --output-tmpfs
+
+# Custom case name
+sudo ./malware_scan.sh /dev/sda1 --output-device /dev/sdc1 --case-name investigation-2026
+```
+
+#### Case Directory Structure
+
+```
+/mnt/dms-output/cases/case_20260121_143022/
+├── evidence_info.txt      # Source device, hashes, timestamps
+├── scan_config.json       # Scan settings used
+├── report.txt/html/json   # Scan reports
+├── findings/              # Detected malware, suspicious files
+├── forensic_artifacts/    # Persistence, execution, timeline
+└── logs/                  # Detailed scan logs
+```
 
 ---
 
@@ -735,6 +883,24 @@ All standard scans PLUS:
 | `--file-anomalies` | | Detect file anomalies/timestomping |
 | `--re-triage` | | RE triage on suspicious files |
 | `--mft-analysis` | | MFT/filesystem forensics |
+| | | |
+| **USB Kit Options** | | |
+| `--build-full-kit` | | Build complete offline USB kit |
+| `--build-minimal-kit` | | Build minimal kit (downloads on-demand) |
+| `--kit-target PATH` | | Target directory for kit building |
+| `--update-kit` | | Update USB kit databases |
+| | | |
+| **ISO Builder Options** | | |
+| `--build-iso` | | Build bootable forensic ISO |
+| `--iso-output PATH` | | Output path for ISO file |
+| `--flash-iso DEVICE` | | Flash ISO to USB device |
+| `--create-persistence DEV` | | Add persistence partition to USB |
+| | | |
+| **Output Storage Options** | | |
+| `--output-device DEV` | | Use specific device for output |
+| `--output-path PATH` | | Use specific path for output |
+| `--output-tmpfs` | | Use RAM only (lost on reboot) |
+| `--case-name NAME` | | Custom case directory name |
 
 ---
 
@@ -767,6 +933,23 @@ MAX_CARVED_FILES=1000       # Limit recovered files
 
 # Logging
 LOG_LEVEL=INFO              # DEBUG, INFO, WARNING, ERROR
+
+# USB Kit Settings
+USB_MODE=auto               # auto, minimal, full
+USB_TOOLS_DIR=tools         # Relative to USB root
+USB_DATABASES_DIR=databases
+KIT_MIN_FREE_SPACE_MB=2000  # Required for full kit
+
+# ISO Builder Settings
+DEBIAN_LIVE_URL=https://cdimage.debian.org/...
+ISO_EXTRA_PACKAGES="sleuthkit ewf-tools dc3dd exiftool testdisk"
+ISO_INCLUDE_CLAMAV_DB=true
+ISO_INCLUDE_YARA_RULES=true
+
+# Output Storage Settings
+OUTPUT_MOUNT_POINT=/mnt/dms-output
+CASE_NAME_PATTERN=case_%Y%m%d_%H%M%S
+OUTPUT_TMPFS_WARN=true      # Warn before using RAM output
 ```
 
 ---
@@ -820,6 +1003,61 @@ Rules should be in subdirectories: `Windows/`, `Linux/`, `Android/`
 1. Get a free API key from [VirusTotal](https://www.virustotal.com/gui/join-us)
 2. Add to config: `VT_API_KEY=your_key_here`
 3. Enable in interactive mode or use `--virustotal` flag
+
+</details>
+
+<details>
+<summary><strong>How do I create a bootable USB for field work?</strong></summary>
+
+Two options:
+
+**Option 1: USB Kit (faster, keeps host OS)**
+```bash
+# Build full offline kit on USB
+sudo ./malware_scan.sh --build-full-kit --kit-target /media/usb
+
+# Boot any Linux, run from USB
+sudo /media/usb/run-dms.sh /dev/sda1 --deep
+```
+
+**Option 2: Bootable ISO (dedicated forensic system)**
+```bash
+# Build ISO
+sudo ./malware_scan.sh --build-iso --iso-output ~/dms.iso
+
+# Flash to USB
+sudo dd if=~/dms.iso of=/dev/sdb bs=4M status=progress
+```
+
+</details>
+
+<details>
+<summary><strong>Where do scan results go when running from live ISO?</strong></summary>
+
+DMS auto-detects available storage and prompts you to select output location:
+- **External USB** (recommended): Plug in a second USB for results
+- **Persistence partition**: If you created one with `--create-persistence`
+- **RAM (tmpfs)**: Temporary, lost on reboot - use `--output-tmpfs`
+
+```bash
+# Explicitly specify output location
+sudo ./malware_scan.sh /dev/sda1 --output-device /dev/sdc1
+```
+
+</details>
+
+<details>
+<summary><strong>How do I update databases on my USB kit?</strong></summary>
+
+When network is available:
+
+```bash
+# Update ClamAV and YARA databases on USB kit
+sudo /media/usb/dms/malware_scan.sh --update-kit
+
+# Or rebuild the ISO with fresh databases
+sudo ./malware_scan.sh --build-iso --iso-include-databases
+```
 
 </details>
 
