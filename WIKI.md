@@ -18,6 +18,7 @@
 10. [Security & Forensic Integrity](#10-security--forensic-integrity)
 11. [Dependencies](#11-dependencies)
 12. [Troubleshooting](#12-troubleshooting)
+13. [Forensic Analysis Modules](#13-forensic-analysis-modules) **(NEW)**
 
 ---
 
@@ -254,6 +255,11 @@ When an EWF image is detected:
 | Bulk Extractor | `scan_bulk_extractor()` | Yes | No | bulk_extractor |
 | Hashes | `scan_hashes()` | Yes | No | md5deep |
 | Slack Space | `extract_slack_space()` | Slack Mode | No | blkls |
+| **Persistence** | `scan_persistence_artifacts()` | Forensic | No | RegRipper |
+| **Execution** | `scan_execution_artifacts()` | Forensic | No | Python parsers |
+| **File Anomalies** | `scan_file_anomalies()` | Forensic | No | file, Python |
+| **RE Triage** | `scan_re_triage()` | Forensic | No | capa, pefile |
+| **MFT Forensics** | `scan_filesystem_forensics()` | Forensic | No | analyzeMFT |
 
 ### 4.2 ClamAV Integration
 
@@ -659,6 +665,17 @@ malware_scan.sh -i
 | `--config FILE` | Use custom configuration file |
 | `--log-file FILE` | Write logs to file |
 | `--keep-output` | Keep temporary output directory |
+
+#### Forensic Analysis (NEW)
+
+| Option | Description |
+|--------|-------------|
+| `--forensic-analysis` | Enable all forensic analysis modules |
+| `--persistence-scan` | Scan for persistence mechanisms (registry, tasks, services) |
+| `--execution-scan` | Analyze execution artifacts (prefetch, amcache, shimcache) |
+| `--file-anomalies` | Detect file anomalies (timestomping, ADS, suspicious paths) |
+| `--re-triage` | Run RE triage on suspicious files (capa, imports, entropy) |
+| `--mft-analysis` | Parse MFT for deleted files and filesystem anomalies |
 
 ### 7.3 Exit Codes
 
@@ -1103,6 +1120,368 @@ sudo ./malware_scan.sh /dev/sdb1 --verbose --log-file /tmp/dms-debug.log
 | `elf_headers` | ELF executables found |
 | `bulk_emails` | Email addresses found |
 | `bulk_urls` | URLs extracted |
+
+---
+
+## 13. Forensic Analysis Modules
+
+### 13.1 Overview
+
+DMS includes comprehensive behavioral and forensic analysis capabilities for Windows artifacts, enabling detection of advanced threats through artifact correlation and MITRE ATT&CK technique mapping.
+
+**Enable all forensic modules**:
+```bash
+sudo ./malware_scan.sh evidence.E01 --forensic-analysis
+```
+
+**Or enable specific modules**:
+```bash
+sudo ./malware_scan.sh /dev/sdb1 --persistence-scan --execution-scan
+```
+
+### 13.2 Module Summary
+
+| Module | CLI Flag | Artifacts | MITRE ATT&CK |
+|--------|----------|-----------|--------------|
+| Persistence | `--persistence-scan` | Registry Run keys, Services, Tasks, Startup, WMI | T1547, T1543, T1053, T1546 |
+| Execution | `--execution-scan` | Prefetch, Amcache, Shimcache, UserAssist, SRUM, BAM | T1059, T1204 |
+| File Anomalies | `--file-anomalies` | Magic mismatch, ADS, timestomping, packed files | T1036, T1070, T1564 |
+| RE Triage | `--re-triage` | capa analysis, suspicious imports, shellcode | T1055, T1055.012 |
+| MFT Forensics | `--mft-analysis` | $MFT parsing, $UsnJrnl, deleted files | T1070, T1485 |
+
+### 13.3 Persistence Artifact Analysis
+
+**Function**: `scan_persistence_artifacts()`
+
+Detects Windows persistence mechanisms used by malware to survive reboots.
+
+| Artifact | Location | Tool | ATT&CK ID |
+|----------|----------|------|-----------|
+| Registry Run Keys | NTUSER.DAT, SOFTWARE hives | RegRipper | T1547.001 |
+| Services | SYSTEM hive | RegRipper `services` plugin | T1543.003 |
+| Scheduled Tasks | Windows/System32/Tasks/* | XML parsing | T1053.005 |
+| Startup Folders | Start Menu/Programs/Startup | File enumeration | T1547.001 |
+| WMI Subscriptions | OBJECTS.DATA | Python WMI parser | T1546.003 |
+| DLL Hijacking | Known vulnerable paths | Path validation | T1574.001 |
+
+**Statistics Tracked**:
+- `persistence_run_keys`: Registry Run key entries
+- `persistence_services`: Suspicious services
+- `persistence_tasks`: Scheduled tasks
+- `persistence_startup`: Startup folder items
+- `persistence_wmi`: WMI subscriptions
+- `persistence_dll_hijack`: DLL hijack paths
+
+### 13.4 Execution Artifact Analysis
+
+**Function**: `scan_execution_artifacts()`
+
+Analyzes Windows forensic artifacts that prove program execution.
+
+| Artifact | What It Proves | Tool | Key Value |
+|----------|----------------|------|-----------|
+| Prefetch | Program executed, timestamps | Python prefetch parser | Last 8 execution times |
+| Amcache | Executables that ran | Python Amcache parser | SHA1 hashes |
+| Shimcache | Programs that existed | AppCompatCache parser | Chronological order |
+| UserAssist | GUI programs launched | RegRipper | Execution count/time |
+| SRUM | Network/energy per app | Python SRUM parser (pyesedb) | Resource usage |
+| BAM/DAM | Background activity | RegRipper | Last execution |
+
+**Execution Anomaly Detection**:
+- Execution from `%TEMP%`, `%PUBLIC%`, Downloads
+- High entropy executable names (obfuscated)
+- Mismatched PE internal name vs filename
+- Execution outside business hours (configurable)
+
+**Statistics Tracked**:
+- `execution_prefetch`: Prefetch files analyzed
+- `execution_amcache`: Amcache entries
+- `execution_shimcache`: Shimcache entries
+- `execution_userassist`: UserAssist records
+- `execution_srum`: SRUM entries
+- `execution_bam`: BAM/DAM entries
+- `execution_anomalies`: Execution anomalies detected
+
+### 13.5 File Anomaly Detection
+
+**Function**: `scan_file_anomalies()`
+
+Detects file-level indicators of compromise and anti-forensic techniques.
+
+| Check | Description | ATT&CK ID |
+|-------|-------------|-----------|
+| Magic vs Extension | Magic bytes don't match file extension | T1036.005 |
+| Alternate Data Streams | Hidden data in NTFS ADS | T1564.004 |
+| Suspicious Paths | Executables in temp, recycle bin, etc. | T1036 |
+| Packed Executables | UPX, Themida, VMProtect signatures | T1027.002 |
+| Attribute Anomalies | Deep paths, Unicode tricks, RTL override | T1036.002 |
+| Timestomping | $SI vs $FN timestamp discrepancy | T1070.006 |
+
+**Packer Detection Signatures**:
+```
+UPX:      "UPX0", "UPX1", "UPX!"
+Themida:  ".themida", ".winlicense"
+VMProtect: ".vmp0", ".vmp1"
+ASPack:   ".aspack"
+PECompact: "PEC2"
+```
+
+**Statistics Tracked**:
+- `file_magic_mismatch`: Magic/extension mismatches
+- `file_ads`: Alternate Data Streams
+- `file_suspicious_location`: Suspicious paths
+- `file_packed`: Packed executables
+- `file_attribute_anomalies`: Attribute anomalies
+- `timestomping_detected`: Timestomping instances
+
+### 13.6 Reverse Engineering Triage
+
+**Function**: `scan_re_triage()`
+
+Automated reverse engineering analysis for carved/suspicious executables.
+
+#### 13.6.1 capa Integration
+
+Uses Mandiant capa for ATT&CK capability mapping:
+```bash
+capa -j suspicious_file.exe
+```
+
+**Output Example**:
+```json
+{
+  "capabilities": {
+    "persistence": ["create scheduled task", "modify registry run key"],
+    "defense_evasion": ["check for debugger", "disable security tools"],
+    "collection": ["capture screenshot", "keylogging"]
+  },
+  "attack_techniques": ["T1547.001", "T1082", "T1055"]
+}
+```
+
+#### 13.6.2 Suspicious Import Analysis
+
+**Process Injection APIs** (T1055):
+```
+CreateRemoteThread, WriteProcessMemory, VirtualAllocEx,
+NtMapViewOfSection, NtWriteVirtualMemory
+```
+
+**Process Hollowing APIs** (T1055.012):
+```
+NtUnmapViewOfSection, ZwUnmapViewOfSection, SetThreadContext,
+NtResumeThread, ResumeThread, NtSuspendThread
+```
+
+**Anti-Debug/Evasion APIs**:
+```
+IsDebuggerPresent, CheckRemoteDebuggerPresent,
+NtQueryInformationProcess (ProcessDebugPort)
+```
+
+**Credential Access APIs** (T1003):
+```
+CredEnumerate, LsaRetrievePrivateData, CryptUnprotectData
+```
+
+#### 13.6.3 Similarity Hashing
+
+| Hash Type | Purpose | Tool |
+|-----------|---------|------|
+| imphash | Import table hash (malware family clustering) | pefile |
+| ssdeep | Fuzzy hash (similarity detection) | ssdeep |
+| TLSH | Locality-sensitive hash | tlsh |
+
+#### 13.6.4 Shellcode Detection
+
+**Patterns Detected**:
+- GetPC techniques (call/pop sequences)
+- API hashing (CRC32, ROR13)
+- Metasploit/Cobalt Strike signatures
+- Position-independent code indicators
+
+**Statistics Tracked**:
+- `re_triaged_files`: Files analyzed
+- `re_suspicious_imports`: Suspicious API imports
+- `re_suspicious_strings`: Suspicious strings (URLs, IPs, commands)
+- `capa_capabilities`: capa capabilities found
+- `attack_techniques_mapped`: ATT&CK techniques identified
+
+### 13.7 MFT/Filesystem Forensics
+
+**Function**: `scan_filesystem_forensics()`
+
+NTFS filesystem forensic analysis for deleted files and anti-forensic detection.
+
+#### 13.7.1 MFT Analysis
+
+| Analysis | Description | Tool |
+|----------|-------------|------|
+| Deleted Records | Files with deleted flag set | analyzeMFT |
+| $DATA Streams | All data streams including ADS | analyzeMFT |
+| Resident Data | Small files stored in MFT record | analyzeMFT |
+| Parent Reconstruction | Full path from parent references | analyzeMFT |
+
+#### 13.7.2 USN Journal Analysis
+
+| Event Type | Forensic Value |
+|------------|----------------|
+| File Create | Program installation, malware drop |
+| File Delete | Evidence destruction attempts |
+| File Rename | Evasion technique |
+| Data Overwrite | Anti-forensic wiping |
+
+**Anti-Forensic Detection**:
+- Mass deletion patterns (wiping tools)
+- Timestamp manipulation sequences
+- USN journal clearing attempts
+
+#### 13.7.3 Timestomping Detection
+
+Compares `$STANDARD_INFORMATION` vs `$FILE_NAME` timestamps:
+
+| Indicator | Description |
+|-----------|-------------|
+| $SI < $FN | $SI modified to appear older |
+| $SI nanoseconds = 0 | Some tools zero nanoseconds |
+| Future timestamps | Impossible dates |
+| Pre-OS timestamps | Dates before Windows installation |
+
+**Statistics Tracked**:
+- `mft_records_parsed`: MFT records analyzed
+- `mft_deleted_recovered`: Deleted files found
+- `usn_entries_parsed`: USN journal entries
+- `timestomping_detected`: Timestomping instances
+
+### 13.8 MITRE ATT&CK Mapping
+
+All forensic findings are mapped to ATT&CK techniques:
+
+| Technique ID | Name | Detection Module |
+|--------------|------|------------------|
+| T1547.001 | Registry Run Keys | Persistence |
+| T1543.003 | Windows Service | Persistence |
+| T1053.005 | Scheduled Task | Persistence |
+| T1546.003 | WMI Event Subscription | Persistence |
+| T1574.001 | DLL Search Order Hijacking | Persistence |
+| T1059 | Command and Scripting Interpreter | Execution |
+| T1204.002 | Malicious File | Execution |
+| T1036.005 | Match Legitimate Name | File Anomalies |
+| T1036.007 | Double File Extension | File Anomalies |
+| T1070.006 | Timestomping | File Anomalies |
+| T1564.004 | NTFS File Attributes (ADS) | File Anomalies |
+| T1027.002 | Software Packing | File Anomalies |
+| T1055 | Process Injection | RE Triage |
+| T1055.012 | Process Hollowing | RE Triage |
+| T1003 | Credential Dumping | RE Triage |
+| T1070 | Indicator Removal | MFT Forensics |
+
+### 13.9 Configuration Options
+
+Add to `~/.malscan.conf`:
+
+```bash
+# ============================================
+# Forensic Analysis Settings
+# ============================================
+
+# Enable full forensic artifact analysis (all modules below)
+FORENSIC_ANALYSIS=false
+
+# Individual module control
+PERSISTENCE_SCAN=false
+EXECUTION_SCAN=false
+FILE_ANOMALIES=false
+RE_TRIAGE=false
+MFT_ANALYSIS=false
+
+# Tool paths
+REGRIPPER_PATH=/opt/regripper
+CAPA_PATH=/opt/capa/capa
+```
+
+### 13.10 Report Output
+
+Forensic findings appear in both HTML and JSON reports:
+
+**HTML Report Section**:
+```
+╔══════════════════════════════════════════════════════════════════╗
+║  BEHAVIORAL & FORENSIC ANALYSIS                                   ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Persistence Artifacts                                            ║
+║    Registry Run Keys:     3                     T1547.001         ║
+║    Services:              1                     T1543.003         ║
+║    Scheduled Tasks:       2                     T1053.005         ║
+╟──────────────────────────────────────────────────────────────────╢
+║  MITRE ATT&CK Techniques Detected                                 ║
+║  [T1547.001] [T1543.003] [T1053.005] [T1055.012]                  ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
+**JSON Report Extension**:
+```json
+{
+  "behavioral_findings": {
+    "enabled": true,
+    "persistence": {
+      "run_keys": 3,
+      "services": 1,
+      "scheduled_tasks": 2
+    },
+    "execution_evidence": {
+      "prefetch_files": 45,
+      "amcache_entries": 128
+    },
+    "file_anomalies": {
+      "magic_mismatch": 2,
+      "timestomping_detected": 1
+    },
+    "re_triage": {
+      "files_analyzed": 15,
+      "suspicious_imports": 3
+    },
+    "attack_techniques": {
+      "total_mapped": 6,
+      "techniques": ["T1547.001", "T1543.003", "T1053.005", "T1055.012"]
+    }
+  }
+}
+```
+
+---
+
+## Appendix C: Forensic Statistics Keys
+
+| Key | Description |
+|-----|-------------|
+| `persistence_run_keys` | Registry Run key entries |
+| `persistence_services` | Suspicious services found |
+| `persistence_tasks` | Scheduled tasks found |
+| `persistence_startup` | Startup folder items |
+| `persistence_wmi` | WMI subscriptions |
+| `persistence_dll_hijack` | DLL hijack paths |
+| `execution_prefetch` | Prefetch files analyzed |
+| `execution_amcache` | Amcache entries |
+| `execution_shimcache` | Shimcache entries |
+| `execution_userassist` | UserAssist records |
+| `execution_srum` | SRUM database entries |
+| `execution_bam` | BAM/DAM entries |
+| `execution_anomalies` | Execution anomalies |
+| `file_magic_mismatch` | Magic/extension mismatches |
+| `file_ads` | Alternate Data Streams |
+| `file_suspicious_location` | Files in suspicious paths |
+| `file_packed` | Packed executables |
+| `file_attribute_anomalies` | Attribute anomalies |
+| `timestomping_detected` | Timestomping instances |
+| `re_triaged_files` | Files RE analyzed |
+| `re_suspicious_imports` | Suspicious API imports |
+| `re_suspicious_strings` | Suspicious strings |
+| `capa_capabilities` | capa capabilities found |
+| `attack_techniques_mapped` | ATT&CK techniques mapped |
+| `mft_records_parsed` | MFT records analyzed |
+| `mft_deleted_recovered` | Deleted files found |
+| `usn_entries_parsed` | USN journal entries |
 
 ---
 
