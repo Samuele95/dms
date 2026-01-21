@@ -69,7 +69,7 @@ DMS combines **12+ scanning techniques** into a single, easy-to-use tool with an
 > | **💾 Full USB Kit** | Complete offline kit - runs on any Linux | ~1.2 GB |
 > | **📦 Minimal Kit** | Script only, downloads tools on-demand | ~10 MB |
 >
-> **Perfect for field operations** - boot from USB at crime scenes with zero network dependency!
+> **Perfect for field operations** - boot from USB with zero network dependency!
 >
 > ```bash
 > # Build bootable ISO
@@ -525,7 +525,7 @@ sudo ./malware_scan.sh /dev/sdc1 --portable
 
 ### 6. Offline Field Operations: USB Kit & Bootable ISO
 
-**Scenario:** Crime scene with no network - need fully self-contained forensic toolkit.
+**Scenario:** Field operation with no network - need fully self-contained forensic toolkit.
 
 **Preparation (at office with network):**
 ```bash
@@ -558,7 +558,7 @@ dms-scan /dev/sda1 --deep --forensic-analysis --output-device /dev/sdc1
 
 <p align="center">
   <strong>Deploy DMS as a complete, self-contained forensic system</strong><br>
-  <em>Perfect for field operations, crime scenes, and air-gapped environments</em>
+  <em>Perfect for field operations and air-gapped environments</em>
 </p>
 
 > **Why Bootable ISO?**
@@ -651,7 +651,7 @@ sudo apt install grub-efi-amd64-bin mtools dosfstools
 │                    DMS BOOTABLE ISO WORKFLOW                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│   PREPARATION (Office)              FIELD (Crime Scene)             │
+│   PREPARATION (Office)              FIELD (Operations)              │
 │   ════════════════════              ═══════════════════             │
 │                                                                     │
 │   ┌─────────────────┐               ┌─────────────────┐             │
